@@ -1,0 +1,60 @@
+===========================================
+  TRANSFERRING TO ANOTHER COMPUTER
+===========================================
+
+YES, you can copy this program to another laptop!
+
+WHAT TO COPY:
+-------------
+Copy the ENTIRE folder containing these files:
+  ✓ main.py
+  ✓ database.py
+  ✓ price_list_window.py
+  ✓ run.bat (Windows only)
+  ✓ inventory.db (optional - only if you want your data)
+  ✓ README.md (optional)
+
+REQUIREMENTS ON NEW COMPUTER:
+-----------------------------
+1. Python 3.7 or higher must be installed
+   - Windows: Check with "py --version"
+   - Mac/Linux: Check with "python3 --version"
+   
+2. If Python is not installed:
+   - Download from: https://www.python.org/downloads/
+   - During installation, check "Add Python to PATH"
+
+HOW TO TRANSFER:
+---------------
+Option 1: USB Drive
+  - Copy the entire project folder to USB
+  - Paste to new computer
+  - Double-click run.bat (Windows) or run: py main.py
+
+Option 2: Cloud Storage (Google Drive, Dropbox, etc.)
+  - Upload the project folder
+  - Download on new computer
+  - Run the application
+
+Option 3: Network/File Sharing
+  - Share the folder over network
+  - Copy to new computer
+  - Run the application
+
+IMPORTANT NOTES:
+----------------
+✓ If you copy inventory.db → Your data transfers with you
+✓ If you DON'T copy inventory.db → New empty database created
+✓ Works on Windows, Mac, and Linux
+✓ No internet needed to run the program
+✓ No installation required (just Python)
+
+TROUBLESHOOTING:
+----------------
+If "py" command doesn't work on new computer:
+  - Try: python main.py
+  - Or: python3 main.py
+  - Or install Python from python.org
+
+===========================================
+

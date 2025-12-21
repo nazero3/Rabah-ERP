@@ -1,0 +1,10 @@
+# Fan Inventory Management System
+# Python 3.7+ required
+
+# Built-in dependencies:
+# - tkinter (GUI)
+# - sqlite3 (Database)
+
+# External packages required:
+python-docx>=0.8.11
+
