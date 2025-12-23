@@ -66,14 +66,14 @@ class PriceListWindow:
         self.available_tree.heading("Airflow", text="Airflow")
         self.available_tree.heading("Wholesale", text="Wholesale")
         self.available_tree.heading("Retail", text="Retail")
-        self.available_tree.heading("Qty", text="Qty")
+        self.available_tree.heading("Qty", text="Available Qty")
         
         self.available_tree.column("ID", width=40, anchor=tk.CENTER)
         self.available_tree.column("Name", width=150, anchor=tk.CENTER)
         self.available_tree.column("Airflow", width=100, anchor=tk.CENTER)
         self.available_tree.column("Wholesale", width=80, anchor=tk.CENTER)
         self.available_tree.column("Retail", width=80, anchor=tk.CENTER)
-        self.available_tree.column("Qty", width=60, anchor=tk.CENTER)
+        self.available_tree.column("Qty", width=90, anchor=tk.CENTER)
         
         self.available_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar_avail_y.grid(row=0, column=1, sticky=(tk.N, tk.S))
@@ -105,7 +105,7 @@ class PriceListWindow:
         scrollbar_list_x = ttk.Scrollbar(price_list_tree_frame, orient=tk.HORIZONTAL)
         
         self.price_list_tree = ttk.Treeview(price_list_tree_frame,
-                                            columns=("Name", "Airflow", "PriceType", "Price", "Qty", "Total"),
+                                            columns=("Order", "Name", "Airflow", "PriceType", "Price", "Qty", "Total"),
                                             show="headings",
                                             yscrollcommand=scrollbar_list_y.set,
                                             xscrollcommand=scrollbar_list_x.set,
@@ -115,6 +115,7 @@ class PriceListWindow:
         scrollbar_list_x.config(command=self.price_list_tree.xview)
         
         # Configure price list tree columns
+        self.price_list_tree.heading("Order", text="#")
         self.price_list_tree.heading("Name", text="Name")
         self.price_list_tree.heading("Airflow", text="Airflow")
         self.price_list_tree.heading("PriceType", text="Price Type")
@@ -122,8 +123,9 @@ class PriceListWindow:
         self.price_list_tree.heading("Qty", text="Quantity")
         self.price_list_tree.heading("Total", text="Total")
         
-        self.price_list_tree.column("Name", width=180, anchor=tk.CENTER)
-        self.price_list_tree.column("Airflow", width=130, anchor=tk.CENTER)
+        self.price_list_tree.column("Order", width=40, anchor=tk.CENTER)
+        self.price_list_tree.column("Name", width=160, anchor=tk.CENTER)
+        self.price_list_tree.column("Airflow", width=120, anchor=tk.CENTER)
         self.price_list_tree.column("PriceType", width=90, anchor=tk.CENTER)
         self.price_list_tree.column("Price", width=90, anchor=tk.CENTER)
         self.price_list_tree.column("Qty", width=70, anchor=tk.CENTER)
@@ -136,9 +138,22 @@ class PriceListWindow:
         scrollbar_list_y.grid(row=0, column=1, sticky=(tk.N, tk.S))
         scrollbar_list_x.grid(row=1, column=0, sticky=(tk.W, tk.E))
         
+        # Order control frame
+        order_frame = ttk.LabelFrame(right_frame, text="Order", padding="5")
+        order_frame.grid(row=2, column=0, pady=5, sticky=(tk.W, tk.E))
+        
+        ttk.Button(order_frame, text="↑ Move Up", 
+                  command=self.move_item_up, width=12).pack(side=tk.LEFT, padx=2)
+        ttk.Button(order_frame, text="↓ Move Down", 
+                  command=self.move_item_down, width=12).pack(side=tk.LEFT, padx=2)
+        ttk.Button(order_frame, text="Sort by ID ↑", 
+                  command=lambda: self.sort_by_id(ascending=True), width=12).pack(side=tk.LEFT, padx=2)
+        ttk.Button(order_frame, text="Sort by ID ↓", 
+                  command=lambda: self.sort_by_id(ascending=False), width=12).pack(side=tk.LEFT, padx=2)
+        
         # Buttons frame
         buttons_frame = ttk.Frame(right_frame)
-        buttons_frame.grid(row=2, column=0, pady=10)
+        buttons_frame.grid(row=3, column=0, pady=10)
         
         ttk.Button(buttons_frame, text="Remove Selected", 
                   command=self.remove_from_price_list).pack(side=tk.LEFT, padx=5)
@@ -168,7 +183,7 @@ class PriceListWindow:
             self.available_tree.insert("", tk.END, values=(
                 fan['id'],
                 fan['name'],
-                fan['airflow'] or "",
+                fan.get('airflow') or "",
                 f"${fan['price_wholesale']:.2f}",
                 f"${fan['price_retail']:.2f}",
                 fan['quantity']
@@ -201,11 +216,13 @@ class PriceListWindow:
             if price_type is None:
                 return  # User cancelled
             
-            # Add with default quantity of 1 and selected price type
+            # Add with default quantity of 1, selected price type, and order index
+            order_index = len(self.selected_fans) + 1
             self.selected_fans.append({
                 'fan': fan, 
                 'quantity': 1,
-                'price_type': price_type
+                'price_type': price_type,
+                'order': order_index
             })
             self.update_price_list()
     
@@ -217,7 +234,7 @@ class PriceListWindow:
             return
         
         item = self.price_list_tree.item(selection[0])
-        fan_name = item['values'][0]
+        fan_name = item['values'][1]  # Name is now in column 1 (Order is 0)
         
         # Remove from selected fans
         self.selected_fans = [f for f in self.selected_fans if f['fan']['name'] != fan_name]
@@ -274,23 +291,23 @@ class PriceListWindow:
             return
         
         item = self.price_list_tree.item(selection[0])
-        fan_name = item['values'][0]
+        fan_name = item['values'][1]  # Name is now in column 1 (Order is 0)
         column = self.price_list_tree.identify_column(event.x)
         
         # Find the item in selected_fans
         for item_data in self.selected_fans:
             if item_data['fan']['name'] == fan_name:
-                # Column indices: Name=#1, Airflow=#2, PriceType=#3, Price=#4, Qty=#5, Total=#6
-                # Values array: Name=0, Airflow=1, PriceType=2, Price=3, Qty=4, Total=5
-                if column == '#3':  # PriceType column
+                # Column indices: Order=#1, Name=#2, Airflow=#3, PriceType=#4, Price=#5, Qty=#6, Total=#7
+                # Values array: Order=0, Name=1, Airflow=2, PriceType=3, Price=4, Qty=5, Total=6
+                if column == '#4':  # PriceType column
                     # Edit price type
                     new_price_type = self.select_price_type_dialog(fan_name)
                     if new_price_type is not None:
                         item_data['price_type'] = new_price_type
                         self.update_price_list()
-                elif column == '#5':  # Quantity column
+                elif column == '#6':  # Quantity column
                     # Edit quantity
-                    current_qty = item['values'][4]
+                    current_qty = item['values'][5]
                     new_qty = simpledialog.askinteger("Edit Quantity", 
                                                       f"Enter quantity for {fan_name}:",
                                                       initialvalue=current_qty,
@@ -314,22 +331,89 @@ class PriceListWindow:
         for item in self.price_list_tree.get_children():
             self.price_list_tree.delete(item)
         
+        # Reassign order numbers to maintain sequence
+        for idx, item_data in enumerate(self.selected_fans, 1):
+            item_data['order'] = idx
+        
         # Insert selected fans with their individual price types
         for item_data in self.selected_fans:
             fan = item_data['fan']
             qty = item_data['quantity']
+            order = item_data.get('order', 0)
             price_type = item_data.get('price_type', 'retail')  # Default to retail if not set
             price = fan['price_retail'] if price_type == 'retail' else fan['price_wholesale']
             total = price * qty
             price_type_label = "Retail" if price_type == 'retail' else "Wholesale"
             self.price_list_tree.insert("", tk.END, values=(
+                order,
                 fan['name'],
-                fan['airflow'] or "",
+                fan.get('airflow') or "",
                 price_type_label,
                 f"${price:.2f}",
                 qty,
                 f"${total:.2f}"
             ))
+    
+    def move_item_up(self):
+        """Move selected item up in the list"""
+        selection = self.price_list_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select an item to move.")
+            return
+        
+        item = self.price_list_tree.item(selection[0])
+        fan_name = item['values'][1]  # Name is in column 1 (Order is 0)
+        
+        # Find the item index
+        for idx, item_data in enumerate(self.selected_fans):
+            if item_data['fan']['name'] == fan_name:
+                if idx > 0:
+                    # Swap with previous item
+                    self.selected_fans[idx], self.selected_fans[idx - 1] = \
+                        self.selected_fans[idx - 1], self.selected_fans[idx]
+                    self.update_price_list()
+                    # Reselect the moved item
+                    children = self.price_list_tree.get_children()
+                    if idx - 1 < len(children):
+                        self.price_list_tree.selection_set(children[idx - 1])
+                else:
+                    messagebox.showinfo("Info", "Item is already at the top.")
+                break
+    
+    def move_item_down(self):
+        """Move selected item down in the list"""
+        selection = self.price_list_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select an item to move.")
+            return
+        
+        item = self.price_list_tree.item(selection[0])
+        fan_name = item['values'][1]  # Name is in column 1 (Order is 0)
+        
+        # Find the item index
+        for idx, item_data in enumerate(self.selected_fans):
+            if item_data['fan']['name'] == fan_name:
+                if idx < len(self.selected_fans) - 1:
+                    # Swap with next item
+                    self.selected_fans[idx], self.selected_fans[idx + 1] = \
+                        self.selected_fans[idx + 1], self.selected_fans[idx]
+                    self.update_price_list()
+                    # Reselect the moved item
+                    children = self.price_list_tree.get_children()
+                    if idx + 1 < len(children):
+                        self.price_list_tree.selection_set(children[idx + 1])
+                else:
+                    messagebox.showinfo("Info", "Item is already at the bottom.")
+                break
+    
+    def sort_by_id(self, ascending=True):
+        """Sort items by fan ID"""
+        if not self.selected_fans:
+            return
+        
+        self.selected_fans.sort(key=lambda x: x['fan']['id'], reverse=not ascending)
+        self.update_price_list()
+        messagebox.showinfo("Sorted", f"Items sorted by ID ({'ascending' if ascending else 'descending'})")
     
     def export_to_word(self):
         """Export price list to a Word document matching the company format"""
@@ -612,13 +696,28 @@ class PriceListWindow:
                     # Set RTL properly
                     pPr = type_para._element.get_or_add_pPr()
                     pPr.set(qn('w:bidi'), '1')
-                    type_para.add_run(fan['name'])
-                    if fan.get('airflow'):
+                    
+                    # Add description first (if exists), then name
+                    description = fan.get('description')
+                    description_text = description.strip() if description else ''
+                    if description_text:
+                        type_para.add_run(description_text)
                         type_para = type_cell.add_paragraph()
                         type_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
                         pPr = type_para._element.get_or_add_pPr()
                         pPr.set(qn('w:bidi'), '1')
-                        type_para.add_run(f"Airflow: {fan['airflow']}")
+                    
+                    # Add name
+                    type_para.add_run(fan['name'])
+                    
+                    # Add airflow if exists
+                    airflow = fan.get('airflow')
+                    if airflow:
+                        type_para = type_cell.add_paragraph()
+                        type_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+                        pPr = type_para._element.get_or_add_pPr()
+                        pPr.set(qn('w:bidi'), '1')
+                        type_para.add_run(f"Airflow: {airflow}")
                 
                 doc.add_paragraph()
                 

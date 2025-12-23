@@ -10,6 +10,8 @@ class FanInventoryApp:
         self.root.geometry("1000x700")
         
         self.db = InventoryDB()
+        self.sort_column = "name"  # Default sort by name
+        self.sort_reverse = False  # Default ascending
         
         # Create main frame
         main_frame = ttk.Frame(root, padding="10")
@@ -40,6 +42,27 @@ class FanInventoryApp:
                   width=20).pack(pady=5, fill=tk.X)
         ttk.Button(buttons_frame, text="Create Price List", 
                   command=self.open_price_list, width=20).pack(pady=5, fill=tk.X)
+        
+        # Sort controls
+        sort_frame = ttk.LabelFrame(buttons_frame, text="Sort By", padding="5")
+        sort_frame.pack(pady=10, fill=tk.X)
+        
+        ttk.Button(sort_frame, text="ID ↑", command=lambda: self.sort_table("id", True), 
+                  width=15).pack(pady=2, fill=tk.X)
+        ttk.Button(sort_frame, text="ID ↓", command=lambda: self.sort_table("id", False), 
+                  width=15).pack(pady=2, fill=tk.X)
+        ttk.Button(sort_frame, text="Name ↑", command=lambda: self.sort_table("name", True), 
+                  width=15).pack(pady=2, fill=tk.X)
+        ttk.Button(sort_frame, text="Name ↓", command=lambda: self.sort_table("name", False), 
+                  width=15).pack(pady=2, fill=tk.X)
+        ttk.Button(sort_frame, text="Price ↑", command=lambda: self.sort_table("price", True), 
+                  width=15).pack(pady=2, fill=tk.X)
+        ttk.Button(sort_frame, text="Price ↓", command=lambda: self.sort_table("price", False), 
+                  width=15).pack(pady=2, fill=tk.X)
+        ttk.Button(sort_frame, text="Qty ↑", command=lambda: self.sort_table("quantity", True), 
+                  width=15).pack(pady=2, fill=tk.X)
+        ttk.Button(sort_frame, text="Qty ↓", command=lambda: self.sort_table("quantity", False), 
+                  width=15).pack(pady=2, fill=tk.X)
         
         # Search frame container
         search_container = ttk.Frame(main_frame)
@@ -81,13 +104,13 @@ class FanInventoryApp:
         scrollbar_y.config(command=self.tree.yview)
         scrollbar_x.config(command=self.tree.xview)
         
-        # Configure columns
-        self.tree.heading("ID", text="ID")
-        self.tree.heading("Name", text="Name")
-        self.tree.heading("Airflow", text="Airflow")
-        self.tree.heading("Wholesale", text="Wholesale Price")
-        self.tree.heading("Retail", text="Retail Price")
-        self.tree.heading("Quantity", text="Quantity")
+        # Configure columns with clickable headers for sorting
+        self.tree.heading("ID", text="ID", command=lambda: self.sort_by_column("ID"))
+        self.tree.heading("Name", text="Name", command=lambda: self.sort_by_column("Name"))
+        self.tree.heading("Airflow", text="Airflow", command=lambda: self.sort_by_column("Airflow"))
+        self.tree.heading("Wholesale", text="Wholesale Price", command=lambda: self.sort_by_column("Wholesale"))
+        self.tree.heading("Retail", text="Retail Price", command=lambda: self.sort_by_column("Retail"))
+        self.tree.heading("Quantity", text="Quantity", command=lambda: self.sort_by_column("Quantity"))
         
         self.tree.column("ID", width=50, anchor=tk.CENTER)
         self.tree.column("Name", width=200, anchor=tk.CENTER)
@@ -116,16 +139,62 @@ class FanInventoryApp:
         else:
             fans = self.db.get_all_fans()
         
+        # Apply sorting
+        fans = self.apply_sorting(fans)
+        
         # Insert into treeview
         for fan in fans:
             self.tree.insert("", tk.END, values=(
                 fan['id'],
                 fan['name'],
-                fan['airflow'] or "",
+                fan.get('airflow') or "",
                 f"${fan['price_wholesale']:.2f}",
                 f"${fan['price_retail']:.2f}",
                 fan['quantity']
             ))
+    
+    def apply_sorting(self, fans):
+        """Apply current sort settings to fans list"""
+        if self.sort_column == "id":
+            fans.sort(key=lambda x: x['id'], reverse=self.sort_reverse)
+        elif self.sort_column == "name":
+            fans.sort(key=lambda x: x['name'].lower(), reverse=self.sort_reverse)
+        elif self.sort_column == "price":
+            # Sort by retail price
+            fans.sort(key=lambda x: x['price_retail'], reverse=self.sort_reverse)
+        elif self.sort_column == "quantity":
+            fans.sort(key=lambda x: x['quantity'], reverse=self.sort_reverse)
+        elif self.sort_column == "airflow":
+            fans.sort(key=lambda x: (x.get('airflow') or '').lower(), reverse=self.sort_reverse)
+        return fans
+    
+    def sort_by_column(self, column_name):
+        """Sort table by clicking column header"""
+        column_map = {
+            "ID": "id",
+            "Name": "name",
+            "Airflow": "airflow",
+            "Wholesale": "price",
+            "Retail": "price",
+            "Quantity": "quantity"
+        }
+        
+        sort_key = column_map.get(column_name, "name")
+        
+        # Toggle reverse if clicking same column
+        if self.sort_column == sort_key:
+            self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_column = sort_key
+            self.sort_reverse = False
+        
+        self.refresh_table()
+    
+    def sort_table(self, sort_by, ascending=True):
+        """Sort table by specified column"""
+        self.sort_column = sort_by
+        self.sort_reverse = not ascending
+        self.refresh_table()
     
     def on_search_change(self, *args):
         """Handle search input changes"""
@@ -238,7 +307,7 @@ class FanDialog:
         
         self.dialog = tk.Toplevel(parent)
         self.dialog.title(title)
-        self.dialog.geometry("400x300")
+        self.dialog.geometry("400x380")
         self.dialog.transient(parent)
         self.dialog.grab_set()
         
@@ -257,29 +326,35 @@ class FanDialog:
         self.name_var = tk.StringVar(value=fan_data['name'] if fan_data else "")
         ttk.Entry(form_frame, textvariable=self.name_var, width=30).grid(row=0, column=1, pady=5)
         
+        # Description
+        ttk.Label(form_frame, text="Description:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.description_var = tk.StringVar(value=fan_data.get('description', '') if fan_data else "")
+        description_entry = ttk.Entry(form_frame, textvariable=self.description_var, width=30)
+        description_entry.grid(row=1, column=1, pady=5)
+        
         # Airflow
-        ttk.Label(form_frame, text="Airflow:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.airflow_var = tk.StringVar(value=fan_data['airflow'] if fan_data and fan_data['airflow'] else "")
-        ttk.Entry(form_frame, textvariable=self.airflow_var, width=30).grid(row=1, column=1, pady=5)
+        ttk.Label(form_frame, text="Airflow:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.airflow_var = tk.StringVar(value=fan_data['airflow'] if fan_data and fan_data.get('airflow') else "")
+        ttk.Entry(form_frame, textvariable=self.airflow_var, width=30).grid(row=2, column=1, pady=5)
         
         # Wholesale Price
-        ttk.Label(form_frame, text="Wholesale Price *:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        ttk.Label(form_frame, text="Wholesale Price *:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.wholesale_var = tk.StringVar(value=str(fan_data['price_wholesale']) if fan_data else "")
-        ttk.Entry(form_frame, textvariable=self.wholesale_var, width=30).grid(row=2, column=1, pady=5)
+        ttk.Entry(form_frame, textvariable=self.wholesale_var, width=30).grid(row=3, column=1, pady=5)
         
         # Retail Price
-        ttk.Label(form_frame, text="Retail Price *:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        ttk.Label(form_frame, text="Retail Price *:").grid(row=4, column=0, sticky=tk.W, pady=5)
         self.retail_var = tk.StringVar(value=str(fan_data['price_retail']) if fan_data else "")
-        ttk.Entry(form_frame, textvariable=self.retail_var, width=30).grid(row=3, column=1, pady=5)
+        ttk.Entry(form_frame, textvariable=self.retail_var, width=30).grid(row=4, column=1, pady=5)
         
         # Quantity
-        ttk.Label(form_frame, text="Quantity *:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        ttk.Label(form_frame, text="Quantity *:").grid(row=5, column=0, sticky=tk.W, pady=5)
         self.quantity_var = tk.StringVar(value=str(fan_data['quantity']) if fan_data else "0")
-        ttk.Entry(form_frame, textvariable=self.quantity_var, width=30).grid(row=4, column=1, pady=5)
+        ttk.Entry(form_frame, textvariable=self.quantity_var, width=30).grid(row=5, column=1, pady=5)
         
         # Buttons
         button_frame = ttk.Frame(form_frame)
-        button_frame.grid(row=5, column=0, columnspan=2, pady=20)
+        button_frame.grid(row=6, column=0, columnspan=2, pady=20)
         
         ttk.Button(button_frame, text="Save", command=self.save).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(side=tk.LEFT, padx=5)
@@ -289,6 +364,7 @@ class FanDialog:
     def save(self):
         """Validate and save form data"""
         name = self.name_var.get().strip()
+        description = self.description_var.get().strip() or None
         airflow = self.airflow_var.get().strip() or None
         wholesale = self.wholesale_var.get().strip()
         retail = self.retail_var.get().strip()
@@ -325,6 +401,7 @@ class FanDialog:
         
         self.result = {
             'name': name,
+            'description': description,
             'airflow': airflow,
             'price_wholesale': price_wholesale,
             'price_retail': price_retail,

@@ -20,6 +20,7 @@ class InventoryDB:
             CREATE TABLE IF NOT EXISTS fans (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
+                description TEXT,
                 airflow TEXT,
                 price_wholesale REAL NOT NULL,
                 price_retail REAL NOT NULL,
@@ -29,37 +30,43 @@ class InventoryDB:
             )
         ''')
         
+        # Add description column to existing databases (migration)
+        try:
+            cursor.execute('ALTER TABLE fans ADD COLUMN description TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
         conn.commit()
         conn.close()
     
-    def add_fan(self, name: str, airflow: Optional[str], price_wholesale: float, 
-                price_retail: float, quantity: int) -> int:
+    def add_fan(self, name: str, description: Optional[str], airflow: Optional[str], 
+                price_wholesale: float, price_retail: float, quantity: int) -> int:
         """Add a new fan to inventory"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT INTO fans (name, airflow, price_wholesale, price_retail, quantity)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (name, airflow, price_wholesale, price_retail, quantity))
+            INSERT INTO fans (name, description, airflow, price_wholesale, price_retail, quantity)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (name, description, airflow, price_wholesale, price_retail, quantity))
         
         fan_id = cursor.lastrowid
         conn.commit()
         conn.close()
         return fan_id
     
-    def update_fan(self, fan_id: int, name: str, airflow: Optional[str], 
-                   price_wholesale: float, price_retail: float, quantity: int):
+    def update_fan(self, fan_id: int, name: str, description: Optional[str], 
+                   airflow: Optional[str], price_wholesale: float, price_retail: float, quantity: int):
         """Update an existing fan"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             UPDATE fans 
-            SET name = ?, airflow = ?, price_wholesale = ?, price_retail = ?, 
+            SET name = ?, description = ?, airflow = ?, price_wholesale = ?, price_retail = ?, 
                 quantity = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        ''', (name, airflow, price_wholesale, price_retail, quantity, fan_id))
+        ''', (name, description, airflow, price_wholesale, price_retail, quantity, fan_id))
         
         conn.commit()
         conn.close()
@@ -99,7 +106,7 @@ class InventoryDB:
         return dict(row) if row else None
     
     def search_fans(self, search_term: str) -> List[Dict]:
-        """Search fans by name or airflow"""
+        """Search fans by name, description, or airflow"""
         conn = self.get_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -107,9 +114,9 @@ class InventoryDB:
         search_pattern = f'%{search_term}%'
         cursor.execute('''
             SELECT * FROM fans 
-            WHERE name LIKE ? OR airflow LIKE ?
+            WHERE name LIKE ? OR description LIKE ? OR airflow LIKE ?
             ORDER BY name
-        ''', (search_pattern, search_pattern))
+        ''', (search_pattern, search_pattern, search_pattern))
         
         fans = [dict(row) for row in cursor.fetchall()]
         conn.close()
