@@ -6,7 +6,7 @@ from price_list_window import PriceListWindow
 class FanInventoryApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Inventory Management System")
+        self.root.title("رب")
         self.root.geometry("1000x700")
         
         self.db = InventoryDB()
@@ -30,36 +30,36 @@ class FanInventoryApp:
         self.title_label.grid(row=0, column=0, columnspan=3, pady=(0, 5))
         
         # Product type selection
-        product_frame = ttk.LabelFrame(main_frame, text="Product Type", padding="5")
+        product_frame = ttk.LabelFrame(main_frame, text="نوع المنتج", padding="5")
         product_frame.grid(row=1, column=0, columnspan=3, pady=(0, 5), sticky=(tk.W, tk.E))
         
         self.product_type_var = tk.StringVar(value="fans")
-        ttk.Radiobutton(product_frame, text="Fans", variable=self.product_type_var, 
+        ttk.Radiobutton(product_frame, text="مراوح", variable=self.product_type_var, 
                        value="fans", command=self.switch_product_type).pack(side=tk.LEFT, padx=10)
-        ttk.Radiobutton(product_frame, text="Sheet Metal", variable=self.product_type_var, 
+        ttk.Radiobutton(product_frame, text="صاج", variable=self.product_type_var, 
                        value="sheet_metal", command=self.switch_product_type).pack(side=tk.LEFT, padx=10)
-        ttk.Radiobutton(product_frame, text="Flexible", variable=self.product_type_var, 
+        ttk.Radiobutton(product_frame, text="فلكسيبل", variable=self.product_type_var, 
                        value="flexible", command=self.switch_product_type).pack(side=tk.LEFT, padx=10)
         
         # Buttons frame
         buttons_frame = ttk.Frame(main_frame)
         buttons_frame.grid(row=2, column=0, sticky=(tk.W, tk.N), padx=(0, 10))
         
-        self.add_btn = ttk.Button(buttons_frame, text="Add", command=self.add_item, 
+        self.add_btn = ttk.Button(buttons_frame, text="إضافة", command=self.add_item, 
                   width=20)
         self.add_btn.pack(pady=5, fill=tk.X)
         
-        self.edit_btn = ttk.Button(buttons_frame, text="Edit", command=self.edit_item, 
+        self.edit_btn = ttk.Button(buttons_frame, text="تعديل", command=self.edit_item, 
                   width=20)
         self.edit_btn.pack(pady=5, fill=tk.X)
         
-        self.delete_btn = ttk.Button(buttons_frame, text="Delete", command=self.delete_item, 
+        self.delete_btn = ttk.Button(buttons_frame, text="حذف", command=self.delete_item, 
                   width=20)
         self.delete_btn.pack(pady=5, fill=tk.X)
         
-        ttk.Button(buttons_frame, text="Refresh", command=self.refresh_table, 
+        ttk.Button(buttons_frame, text="تحديث", command=self.refresh_table, 
                   width=20).pack(pady=5, fill=tk.X)
-        ttk.Button(buttons_frame, text="Create Price List", 
+        ttk.Button(buttons_frame, text="إنشاء عرض سعر", 
                   command=self.open_price_list, width=20).pack(pady=5, fill=tk.X)
         
         # Sort controls
@@ -90,7 +90,7 @@ class FanInventoryApp:
         
         # Toggle button for search
         self.search_visible = False
-        self.toggle_search_btn = ttk.Button(search_container, text="🔍 Show Search", 
+        self.toggle_search_btn = ttk.Button(search_container, text="🔍 إظهار البحث", 
                                            command=self.toggle_search, width=15)
         self.toggle_search_btn.grid(row=0, column=0, sticky=tk.E)
         
@@ -182,24 +182,25 @@ class FanInventoryApp:
             self.tree.heading(col, text="")
             self.tree.column(col, width=0)
         
+        # Reverse column order for RTL display
         if self.current_product_type == "fans":
-            columns = ("ID", "Name", "Airflow", "Wholesale", "Retail", "Quantity")
-            headings = ("ID", "Name", "Airflow", "Wholesale Price", "Retail Price", "Quantity")
-            widths = (50, 200, 150, 120, 120, 100)
+            columns = ("Quantity", "Retail", "Wholesale", "Airflow", "Name")
+            headings = ("كمية", "مفرق", "جملة", "غزارة", "نوع")
+            widths = (100, 120, 120, 150, 200)
         elif self.current_product_type == "sheet_metal":
-            columns = ("ID", "Thickness", "Dimensions", "Measurement", "Cost", "Extra")
-            headings = ("ID", "Thickness", "Dimensions", "Measurement", "Cost", "Extra")
-            widths = (50, 100, 120, 100, 100, 120)
+            columns = ("Extra", "Cost", "Measurement", "Dimensions", "Thickness")
+            headings = ("عزل و ارموفلكس", "اجور", "القياس", "ابعاد الصندوق", "سماكة الصاج")
+            widths = (150, 100, 100, 120, 120)
         else:  # flexible
-            columns = ("ID", "Diameter", "Collection", "Meter")
-            headings = ("ID", "Diameter", "Collection", "Meter")
-            widths = (50, 120, 150, 100)
+            columns = ("Meter", "Collection", "Diameter")
+            headings = ("متر", "ربطة", "قطر")
+            widths = (100, 150, 120)
         
-        # Configure columns
+        # Configure columns with RTL alignment
         self.tree['columns'] = columns
         for i, (col, heading, width) in enumerate(zip(columns, headings, widths)):
             self.tree.heading(col, text=heading, command=lambda c=col: self.sort_by_column(c))
-            self.tree.column(col, width=width, anchor=tk.CENTER)
+            self.tree.column(col, width=width, anchor=tk.E)  # Right alignment for RTL
     
     def switch_product_type(self):
         """Switch between product types"""
@@ -213,11 +214,11 @@ class FanInventoryApp:
         }
         self.title_label.config(text=f"Inventory Management - {titles[self.current_product_type]}")
         
-        # Update button labels
+        # Update button labels (Arabic)
         labels = {
-            "fans": ("Add Fan", "Edit Fan", "Delete Fan"),
-            "sheet_metal": ("Add Sheet Metal", "Edit Sheet Metal", "Delete Sheet Metal"),
-            "flexible": ("Add Flexible", "Edit Flexible", "Delete Flexible")
+            "fans": ("إضافة مروحة", "تعديل مروحة", "حذف مروحة"),
+            "sheet_metal": ("إضافة صاج", "تعديل صاج", "حذف صاج"),
+            "flexible": ("إضافة فلكسيبل", "تعديل فلكسيبل", "حذف فلكسيبل")
         }
         self.add_btn.config(text=labels[self.current_product_type][0])
         self.edit_btn.config(text=labels[self.current_product_type][1])
@@ -260,32 +261,30 @@ class FanInventoryApp:
         # Apply sorting
         items = self.apply_sorting(items)
         
-        # Insert into treeview based on product type
+        # Insert into treeview based on product type (RTL order - reversed)
+        # Use iid to store the item ID for edit/delete operations
         for item in items:
             if self.current_product_type == "fans":
-                self.tree.insert("", tk.END, values=(
-                    item['id'],
-                    item['name'],
-                    item.get('airflow') or "",
-                    f"${item['price_wholesale']:.2f}",
+                self.tree.insert("", tk.END, iid=str(item['id']), values=(
+                    item['quantity'],
                     f"${item['price_retail']:.2f}",
-                    item['quantity']
+                    f"${item['price_wholesale']:.2f}",
+                    item.get('airflow') or "",
+                    item['name']
                 ))
             elif self.current_product_type == "sheet_metal":
-                self.tree.insert("", tk.END, values=(
-                    item['id'],
-                    item.get('thickness') or "",
-                    item.get('dimensions') or "",
-                    item.get('measurement') or "",
+                self.tree.insert("", tk.END, iid=str(item['id']), values=(
+                    item.get('extra') or "",
                     f"${item.get('cost', 0):.2f}",
-                    item.get('extra') or ""
+                    item.get('measurement') or "",
+                    item.get('dimensions') or "",
+                    item.get('thickness') or ""
                 ))
             else:  # flexible
-                self.tree.insert("", tk.END, values=(
-                    item['id'],
-                    item.get('diameter') or "",
+                self.tree.insert("", tk.END, iid=str(item['id']), values=(
+                    f"${item.get('meter', 0):.2f}",
                     item.get('collection') or "",
-                    f"${item.get('meter', 0):.2f}"
+                    item.get('diameter') or ""
                 ))
     
     def apply_sorting(self, items):
@@ -327,28 +326,25 @@ class FanInventoryApp:
         # Map column names to sort keys based on product type
         if self.current_product_type == "fans":
             column_map = {
-                "ID": "id",
-                "Name": "name",
-                "Airflow": "airflow",
-                "Wholesale": "price",
-                "Retail": "price",
-                "Quantity": "quantity"
+                "نوع": "name",
+                "غزارة": "airflow",
+                "جملة": "price",
+                "مفرق": "price",
+                "كمية": "quantity"
             }
         elif self.current_product_type == "sheet_metal":
             column_map = {
-                "ID": "id",
-                "Thickness": "thickness",
-                "Dimensions": "thickness",  # Fallback to thickness for sorting
-                "Measurement": "thickness",  # Fallback to thickness for sorting
-                "Cost": "price",
-                "Extra": "thickness"  # Fallback to thickness for sorting
+                "سماكة الصاج": "thickness",
+                "ابعاد الصندوق": "thickness",  # Fallback to thickness for sorting
+                "القياس": "thickness",  # Fallback to thickness for sorting
+                "اجور": "price",
+                "عزل و ارموفلكس": "thickness"  # Fallback to thickness for sorting
             }
         else:  # flexible
             column_map = {
-                "ID": "id",
-                "Diameter": "diameter",
-                "Collection": "diameter",  # Fallback to diameter for sorting
-                "Meter": "price"
+                "قطر": "diameter",
+                "ربطة": "diameter",  # Fallback to diameter for sorting
+                "متر": "price"
             }
         
         sort_key = column_map.get(column_name, "name")
@@ -420,8 +416,8 @@ class FanInventoryApp:
             messagebox.showwarning("No Selection", f"Please select a {product_name[self.current_product_type]} to edit.")
             return
         
-        item = self.tree.item(selection[0])
-        item_id = item['values'][0]
+        # Get item ID from the treeview item identifier (iid)
+        item_id = int(selection[0])
         
         # Get item data
         if self.current_product_type == "fans":
@@ -472,9 +468,16 @@ class FanInventoryApp:
             messagebox.showwarning("No Selection", f"Please select a {product_name[self.current_product_type]} to delete.")
             return
         
+        # Get item ID from the treeview item identifier (iid)
+        item_id = int(selection[0])
         item = self.tree.item(selection[0])
-        item_id = item['values'][0]
-        item_name = item['values'][1]
+        # In RTL order, name is last column
+        if self.current_product_type == "fans":
+            item_name = item['values'][4]  # Name is last in RTL
+        elif self.current_product_type == "sheet_metal":
+            item_name = item['values'][4]  # Thickness is last in RTL
+        else:  # flexible
+            item_name = item['values'][2]  # Diameter is last in RTL
         
         if messagebox.askyesno("Confirm Delete", 
                               f"Are you sure you want to delete '{item_name}'?"):
@@ -496,7 +499,7 @@ class FanInventoryApp:
         if self.search_visible:
             # Hide search bar
             self.search_frame.grid_remove()
-            self.toggle_search_btn.config(text="🔍 Show Search")
+            self.toggle_search_btn.config(text="🔍 إظهار البحث")
             self.search_visible = False
             # Clear search when hiding
             self.search_var.set("")
@@ -504,7 +507,7 @@ class FanInventoryApp:
         else:
             # Show search bar
             self.search_frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
-            self.toggle_search_btn.config(text="✖ Hide Search")
+            self.toggle_search_btn.config(text="✖ إخفاء البحث")
             self.search_visible = True
             # Focus on search entry
             self.search_entry.focus()

@@ -8,7 +8,7 @@ class PriceListWindow:
         self.selected_fans = []  # List of dicts: {'fan': fan_data, 'quantity': int}
         
         self.window = tk.Toplevel(parent)
-        self.window.title("Create Price List / Inquiry")
+        self.window.title("إنشاء عرض سعر / استفسار")
         self.window.geometry("1200x700")
         self.window.transient(parent)
         
@@ -20,12 +20,12 @@ class PriceListWindow:
         main_frame.rowconfigure(1, weight=1)
         
         # Title
-        title_label = ttk.Label(main_frame, text="Price List / Inquiry Generator", 
+        title_label = ttk.Label(main_frame, text="مولد عرض السعر / الاستفسار", 
                                font=("Arial", 14, "bold"))
         title_label.grid(row=0, column=0, columnspan=2, pady=(0, 10))
         
         # Left panel - Search and available fans
-        left_frame = ttk.LabelFrame(main_frame, text="Available Fans", padding="10")
+        left_frame = ttk.LabelFrame(main_frame, text="المراوح المتاحة", padding="10")
         left_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
         left_frame.columnconfigure(0, weight=1)
         left_frame.rowconfigure(1, weight=1)
@@ -35,7 +35,7 @@ class PriceListWindow:
         search_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         search_frame.columnconfigure(1, weight=1)
         
-        ttk.Label(search_frame, text="Search:").grid(row=0, column=0, padx=(0, 5))
+        ttk.Label(search_frame, text="بحث:").grid(row=0, column=0, padx=(0, 5))
         self.search_var = tk.StringVar()
         self.search_var.trace('w', self.on_search_change)
         search_entry = ttk.Entry(search_frame, textvariable=self.search_var, width=25)
@@ -50,8 +50,9 @@ class PriceListWindow:
         scrollbar_avail_y = ttk.Scrollbar(available_tree_frame, orient=tk.VERTICAL)
         scrollbar_avail_x = ttk.Scrollbar(available_tree_frame, orient=tk.HORIZONTAL)
         
+        # Reverse column order for RTL display
         self.available_tree = ttk.Treeview(available_tree_frame,
-                                           columns=("ID", "Name", "Airflow", "Wholesale", "Retail", "Qty"),
+                                           columns=("Qty", "Retail", "Wholesale", "Airflow", "Name"),
                                            show="headings",
                                            yscrollcommand=scrollbar_avail_y.set,
                                            xscrollcommand=scrollbar_avail_x.set,
@@ -60,31 +61,29 @@ class PriceListWindow:
         scrollbar_avail_y.config(command=self.available_tree.yview)
         scrollbar_avail_x.config(command=self.available_tree.xview)
         
-        # Configure available tree columns
-        self.available_tree.heading("ID", text="ID")
-        self.available_tree.heading("Name", text="Name")
-        self.available_tree.heading("Airflow", text="Airflow")
-        self.available_tree.heading("Wholesale", text="Wholesale")
-        self.available_tree.heading("Retail", text="Retail")
-        self.available_tree.heading("Qty", text="Available Qty")
+        # Configure available tree columns (Arabic headings for fans, RTL order)
+        self.available_tree.heading("Qty", text="كمية")
+        self.available_tree.heading("Retail", text="مفرق")
+        self.available_tree.heading("Wholesale", text="جملة")
+        self.available_tree.heading("Airflow", text="غزارة")
+        self.available_tree.heading("Name", text="نوع")
         
-        self.available_tree.column("ID", width=40, anchor=tk.CENTER)
-        self.available_tree.column("Name", width=150, anchor=tk.CENTER)
-        self.available_tree.column("Airflow", width=100, anchor=tk.CENTER)
-        self.available_tree.column("Wholesale", width=80, anchor=tk.CENTER)
-        self.available_tree.column("Retail", width=80, anchor=tk.CENTER)
-        self.available_tree.column("Qty", width=90, anchor=tk.CENTER)
+        self.available_tree.column("Qty", width=90, anchor=tk.E)
+        self.available_tree.column("Retail", width=80, anchor=tk.E)
+        self.available_tree.column("Wholesale", width=80, anchor=tk.E)
+        self.available_tree.column("Airflow", width=100, anchor=tk.E)
+        self.available_tree.column("Name", width=150, anchor=tk.E)
         
         self.available_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar_avail_y.grid(row=0, column=1, sticky=(tk.N, tk.S))
         scrollbar_avail_x.grid(row=1, column=0, sticky=(tk.W, tk.E))
         
         # Add button
-        ttk.Button(left_frame, text="Add to Price List →", 
+        ttk.Button(left_frame, text="← إضافة إلى عرض السعر", 
                   command=self.add_to_price_list).grid(row=2, column=0, pady=10)
         
         # Right panel - Price list
-        right_frame = ttk.LabelFrame(main_frame, text="Price List / Inquiry", padding="10")
+        right_frame = ttk.LabelFrame(main_frame, text="عرض السعر / الاستفسار", padding="10")
         right_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
         right_frame.columnconfigure(0, weight=1)
         right_frame.rowconfigure(1, weight=1)
@@ -92,7 +91,7 @@ class PriceListWindow:
         # Info label (price type is now per-item)
         info_frame = ttk.Frame(right_frame)
         info_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        ttk.Label(info_frame, text="Double-click Price Type or Quantity to edit", 
+        ttk.Label(info_frame, text="انقر نقراً مزدوجاً على نوع السعر أو الكمية للتعديل", 
                  font=("Arial", 9)).pack()
         
         # Price list treeview
@@ -104,8 +103,9 @@ class PriceListWindow:
         scrollbar_list_y = ttk.Scrollbar(price_list_tree_frame, orient=tk.VERTICAL)
         scrollbar_list_x = ttk.Scrollbar(price_list_tree_frame, orient=tk.HORIZONTAL)
         
+        # Reverse column order for RTL display
         self.price_list_tree = ttk.Treeview(price_list_tree_frame,
-                                            columns=("Order", "Name", "Airflow", "PriceType", "Price", "Qty", "Total"),
+                                            columns=("Total", "Qty", "Price", "PriceType", "Airflow", "Name", "Order"),
                                             show="headings",
                                             yscrollcommand=scrollbar_list_y.set,
                                             xscrollcommand=scrollbar_list_x.set,
@@ -114,22 +114,22 @@ class PriceListWindow:
         scrollbar_list_y.config(command=self.price_list_tree.yview)
         scrollbar_list_x.config(command=self.price_list_tree.xview)
         
-        # Configure price list tree columns
+        # Configure price list tree columns (Arabic headings for fans, RTL order)
+        self.price_list_tree.heading("Total", text="الإجمالي")
+        self.price_list_tree.heading("Qty", text="كمية")
+        self.price_list_tree.heading("Price", text="السعر")
+        self.price_list_tree.heading("PriceType", text="نوع السعر")
+        self.price_list_tree.heading("Airflow", text="غزارة")
+        self.price_list_tree.heading("Name", text="نوع")
         self.price_list_tree.heading("Order", text="#")
-        self.price_list_tree.heading("Name", text="Name")
-        self.price_list_tree.heading("Airflow", text="Airflow")
-        self.price_list_tree.heading("PriceType", text="Price Type")
-        self.price_list_tree.heading("Price", text="Unit Price")
-        self.price_list_tree.heading("Qty", text="Quantity")
-        self.price_list_tree.heading("Total", text="Total")
         
-        self.price_list_tree.column("Order", width=40, anchor=tk.CENTER)
-        self.price_list_tree.column("Name", width=160, anchor=tk.CENTER)
-        self.price_list_tree.column("Airflow", width=120, anchor=tk.CENTER)
-        self.price_list_tree.column("PriceType", width=90, anchor=tk.CENTER)
-        self.price_list_tree.column("Price", width=90, anchor=tk.CENTER)
-        self.price_list_tree.column("Qty", width=70, anchor=tk.CENTER)
-        self.price_list_tree.column("Total", width=90, anchor=tk.CENTER)
+        self.price_list_tree.column("Total", width=90, anchor=tk.E)
+        self.price_list_tree.column("Qty", width=70, anchor=tk.E)
+        self.price_list_tree.column("Price", width=90, anchor=tk.E)
+        self.price_list_tree.column("PriceType", width=90, anchor=tk.E)
+        self.price_list_tree.column("Airflow", width=120, anchor=tk.E)
+        self.price_list_tree.column("Name", width=160, anchor=tk.E)
+        self.price_list_tree.column("Order", width=40, anchor=tk.E)
         
         # Bind double-click to edit quantity or price type
         self.price_list_tree.bind('<Double-1>', self.on_item_double_click)
@@ -139,27 +139,27 @@ class PriceListWindow:
         scrollbar_list_x.grid(row=1, column=0, sticky=(tk.W, tk.E))
         
         # Order control frame
-        order_frame = ttk.LabelFrame(right_frame, text="Order", padding="5")
+        order_frame = ttk.LabelFrame(right_frame, text="الترتيب", padding="5")
         order_frame.grid(row=2, column=0, pady=5, sticky=(tk.W, tk.E))
         
-        ttk.Button(order_frame, text="↑ Move Up", 
-                  command=self.move_item_up, width=12).pack(side=tk.LEFT, padx=2)
-        ttk.Button(order_frame, text="↓ Move Down", 
-                  command=self.move_item_down, width=12).pack(side=tk.LEFT, padx=2)
-        ttk.Button(order_frame, text="Sort by ID ↑", 
-                  command=lambda: self.sort_by_id(ascending=True), width=12).pack(side=tk.LEFT, padx=2)
-        ttk.Button(order_frame, text="Sort by ID ↓", 
-                  command=lambda: self.sort_by_id(ascending=False), width=12).pack(side=tk.LEFT, padx=2)
+        ttk.Button(order_frame, text="↑ نقل لأعلى", 
+                  command=self.move_item_up, width=15).pack(side=tk.LEFT, padx=2)
+        ttk.Button(order_frame, text="↓ نقل لأسفل", 
+                  command=self.move_item_down, width=15).pack(side=tk.LEFT, padx=2)
+        ttk.Button(order_frame, text="ترتيب حسب الاسم ↑", 
+                  command=lambda: self.sort_by_id(ascending=True), width=18).pack(side=tk.LEFT, padx=2)
+        ttk.Button(order_frame, text="ترتيب حسب الاسم ↓", 
+                  command=lambda: self.sort_by_id(ascending=False), width=18).pack(side=tk.LEFT, padx=2)
         
         # Buttons frame
         buttons_frame = ttk.Frame(right_frame)
         buttons_frame.grid(row=3, column=0, pady=10)
         
-        ttk.Button(buttons_frame, text="Remove Selected", 
+        ttk.Button(buttons_frame, text="حذف المحدد", 
                   command=self.remove_from_price_list).pack(side=tk.LEFT, padx=5)
-        ttk.Button(buttons_frame, text="Clear All", 
+        ttk.Button(buttons_frame, text="مسح الكل", 
                   command=self.clear_price_list).pack(side=tk.LEFT, padx=5)
-        ttk.Button(buttons_frame, text="Export to Word", 
+        ttk.Button(buttons_frame, text="تصدير إلى Word", 
                   command=self.export_to_word).pack(side=tk.LEFT, padx=5)
         
         # Load initial data
@@ -178,15 +178,14 @@ class PriceListWindow:
         else:
             fans = self.db.get_all_fans()
         
-        # Insert into treeview
+        # Insert into treeview (use iid to store fan ID, RTL order)
         for fan in fans:
-            self.available_tree.insert("", tk.END, values=(
-                fan['id'],
-                fan['name'],
-                fan.get('airflow') or "",
-                f"${fan['price_wholesale']:.2f}",
+            self.available_tree.insert("", tk.END, iid=str(fan['id']), values=(
+                fan['quantity'],
                 f"${fan['price_retail']:.2f}",
-                fan['quantity']
+                f"${fan['price_wholesale']:.2f}",
+                fan.get('airflow') or "",
+                fan['name']
             ))
     
     def on_search_change(self, *args):
@@ -197,15 +196,15 @@ class PriceListWindow:
         """Add selected fan to price list"""
         selection = self.available_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a fan to add.")
+            messagebox.showwarning("لا يوجد تحديد", "يرجى تحديد مروحة للإضافة.")
             return
         
-        item = self.available_tree.item(selection[0])
-        fan_id = item['values'][0]
+        # Get fan ID from the treeview item identifier (iid)
+        fan_id = int(selection[0])
         
         # Check if already in price list
         if any(item_data['fan']['id'] == fan_id for item_data in self.selected_fans):
-            messagebox.showinfo("Already Added", "This fan is already in the price list.")
+            messagebox.showinfo("تمت الإضافة مسبقاً", "هذه المروحة موجودة بالفعل في عرض السعر.")
             return
         
         # Get fan data
@@ -230,11 +229,11 @@ class PriceListWindow:
         """Remove selected fan from price list"""
         selection = self.price_list_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a fan to remove.")
+            messagebox.showwarning("لا يوجد تحديد", "يرجى تحديد مروحة للحذف.")
             return
         
         item = self.price_list_tree.item(selection[0])
-        fan_name = item['values'][1]  # Name is now in column 1 (Order is 0)
+        fan_name = item['values'][5]  # Name is in column 5 (RTL order)
         
         # Remove from selected fans
         self.selected_fans = [f for f in self.selected_fans if f['fan']['name'] != fan_name]
@@ -243,7 +242,7 @@ class PriceListWindow:
     def select_price_type_dialog(self, fan_name):
         """Dialog to select price type for an item"""
         dialog = tk.Toplevel(self.window)
-        dialog.title("Select Price Type")
+        dialog.title("اختر نوع السعر")
         dialog.geometry("300x150")
         dialog.transient(self.window)
         dialog.grab_set()
@@ -256,7 +255,7 @@ class PriceListWindow:
         
         result = {'price_type': None}
         
-        ttk.Label(dialog, text=f"Select price type for:\n{fan_name}", 
+        ttk.Label(dialog, text=f"اختر نوع السعر لـ:\n{fan_name}", 
                  font=("Arial", 10)).pack(pady=10)
         
         price_type_var = tk.StringVar(value="retail")
@@ -264,9 +263,9 @@ class PriceListWindow:
         frame = ttk.Frame(dialog)
         frame.pack(pady=10)
         
-        ttk.Radiobutton(frame, text="Retail", variable=price_type_var, 
+        ttk.Radiobutton(frame, text="مفرق", variable=price_type_var, 
                        value="retail").pack(side=tk.LEFT, padx=10)
-        ttk.Radiobutton(frame, text="Wholesale", variable=price_type_var, 
+        ttk.Radiobutton(frame, text="جملة", variable=price_type_var, 
                        value="wholesale").pack(side=tk.LEFT, padx=10)
         
         def save():
@@ -278,8 +277,8 @@ class PriceListWindow:
         
         button_frame = ttk.Frame(dialog)
         button_frame.pack(pady=10)
-        ttk.Button(button_frame, text="OK", command=save).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=cancel).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="موافق", command=save).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="إلغاء", command=cancel).pack(side=tk.LEFT, padx=5)
         
         self.window.wait_window(dialog)
         return result['price_type']
@@ -291,25 +290,26 @@ class PriceListWindow:
             return
         
         item = self.price_list_tree.item(selection[0])
-        fan_name = item['values'][1]  # Name is now in column 1 (Order is 0)
+        # In RTL order: Total=0, Qty=1, Price=2, PriceType=3, Airflow=4, Name=5, Order=6
+        fan_name = item['values'][5]  # Name is in column 5
         column = self.price_list_tree.identify_column(event.x)
         
         # Find the item in selected_fans
         for item_data in self.selected_fans:
             if item_data['fan']['name'] == fan_name:
-                # Column indices: Order=#1, Name=#2, Airflow=#3, PriceType=#4, Price=#5, Qty=#6, Total=#7
-                # Values array: Order=0, Name=1, Airflow=2, PriceType=3, Price=4, Qty=5, Total=6
+                # Column indices in RTL: Total=#1, Qty=#2, Price=#3, PriceType=#4, Airflow=#5, Name=#6, Order=#7
+                # Values array: Total=0, Qty=1, Price=2, PriceType=3, Airflow=4, Name=5, Order=6
                 if column == '#4':  # PriceType column
                     # Edit price type
                     new_price_type = self.select_price_type_dialog(fan_name)
                     if new_price_type is not None:
                         item_data['price_type'] = new_price_type
                         self.update_price_list()
-                elif column == '#6':  # Quantity column
+                elif column == '#2':  # Quantity column (Qty is now #2 in RTL)
                     # Edit quantity
-                    current_qty = item['values'][5]
-                    new_qty = simpledialog.askinteger("Edit Quantity", 
-                                                      f"Enter quantity for {fan_name}:",
+                    current_qty = item['values'][1]
+                    new_qty = simpledialog.askinteger("تعديل الكمية", 
+                                                      f"أدخل الكمية لـ {fan_name}:",
                                                       initialvalue=current_qty,
                                                       minvalue=1,
                                                       parent=self.window)
@@ -320,8 +320,8 @@ class PriceListWindow:
     
     def clear_price_list(self):
         """Clear all fans from price list"""
-        if self.selected_fans and messagebox.askyesno("Confirm Clear", 
-                                                      "Clear all items from price list?"):
+        if self.selected_fans and messagebox.askyesno("تأكيد المسح", 
+                                                      "هل تريد مسح جميع العناصر من عرض السعر؟"):
             self.selected_fans = []
             self.update_price_list()
     
@@ -343,15 +343,16 @@ class PriceListWindow:
             price_type = item_data.get('price_type', 'retail')  # Default to retail if not set
             price = fan['price_retail'] if price_type == 'retail' else fan['price_wholesale']
             total = price * qty
-            price_type_label = "Retail" if price_type == 'retail' else "Wholesale"
+            price_type_label = "مفرق" if price_type == 'retail' else "جملة"
+            # Insert in RTL order (reversed)
             self.price_list_tree.insert("", tk.END, values=(
-                order,
-                fan['name'],
-                fan.get('airflow') or "",
-                price_type_label,
-                f"${price:.2f}",
+                f"${total:.2f}",
                 qty,
-                f"${total:.2f}"
+                f"${price:.2f}",
+                price_type_label,
+                fan.get('airflow') or "",
+                fan['name'],
+                order
             ))
     
     def move_item_up(self):
@@ -362,7 +363,7 @@ class PriceListWindow:
             return
         
         item = self.price_list_tree.item(selection[0])
-        fan_name = item['values'][1]  # Name is in column 1 (Order is 0)
+        fan_name = item['values'][5]  # Name is in column 5 (RTL order: Total=0, Qty=1, Price=2, PriceType=3, Airflow=4, Name=5, Order=6)
         
         # Find the item index
         for idx, item_data in enumerate(self.selected_fans):
@@ -377,18 +378,18 @@ class PriceListWindow:
                     if idx - 1 < len(children):
                         self.price_list_tree.selection_set(children[idx - 1])
                 else:
-                    messagebox.showinfo("Info", "Item is already at the top.")
+                    messagebox.showinfo("معلومات", "العنصر موجود بالفعل في الأعلى.")
                 break
     
     def move_item_down(self):
         """Move selected item down in the list"""
         selection = self.price_list_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select an item to move.")
+            messagebox.showwarning("لا يوجد تحديد", "يرجى تحديد عنصر للنقل.")
             return
         
         item = self.price_list_tree.item(selection[0])
-        fan_name = item['values'][1]  # Name is in column 1 (Order is 0)
+        fan_name = item['values'][5]  # Name is in column 5 (RTL order)
         
         # Find the item index
         for idx, item_data in enumerate(self.selected_fans):
@@ -403,7 +404,7 @@ class PriceListWindow:
                     if idx + 1 < len(children):
                         self.price_list_tree.selection_set(children[idx + 1])
                 else:
-                    messagebox.showinfo("Info", "Item is already at the bottom.")
+                    messagebox.showinfo("معلومات", "العنصر موجود بالفعل في الأسفل.")
                 break
     
     def sort_by_id(self, ascending=True):
@@ -413,12 +414,12 @@ class PriceListWindow:
         
         self.selected_fans.sort(key=lambda x: x['fan']['id'], reverse=not ascending)
         self.update_price_list()
-        messagebox.showinfo("Sorted", f"Items sorted by ID ({'ascending' if ascending else 'descending'})")
+        messagebox.showinfo("تم الترتيب", f"تم ترتيب العناصر حسب الاسم ({'تصاعدي' if ascending else 'تنازلي'})")
     
     def export_to_word(self):
-        """Export price list to a Word document matching the company format"""
+        """Export price list to a Word document using a template file"""
         if not self.selected_fans:
-            messagebox.showwarning("Empty List", "Price list is empty.")
+            messagebox.showwarning("قائمة فارغة", "عرض السعر فارغ.")
             return
         
         try:
@@ -427,6 +428,7 @@ class PriceListWindow:
             from docx.enum.text import WD_ALIGN_PARAGRAPH
             from docx.oxml.ns import qn
             from docx.oxml import OxmlElement
+            import os
         except ImportError:
             messagebox.showerror("Error", 
                 "python-docx library is required. Please install it using:\n"
@@ -436,14 +438,49 @@ class PriceListWindow:
         from tkinter import filedialog
         from datetime import datetime
         
+        # Look for template file
+        try:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+        except:
+            current_dir = os.getcwd()
+        
+        template_paths = [
+            "template.docx",
+            "format.docx",
+            os.path.join(current_dir, "template.docx"),
+            os.path.join(current_dir, "format.docx")
+        ]
+        
+        template_path = None
+        for path in template_paths:
+            if os.path.exists(path):
+                template_path = path
+                break
+        
+        if not template_path:
+            # Ask user to select template file
+            self.window.update()
+            self.window.lift()
+            self.window.focus_force()
+            
+            template_path = filedialog.askopenfilename(
+                title="اختر ملف القالب (Template File)",
+                filetypes=[("Word documents", "*.docx"), ("All files", "*.*")],
+                parent=self.window
+            )
+            
+            if not template_path:
+                messagebox.showwarning("تحذير", "يجب اختيار ملف القالب للمتابعة.")
+                return
+        
         # Ensure window is active before showing dialogs
         self.window.update()
         self.window.lift()
         self.window.focus_force()
         
         # Get customer name (with parent window to ensure it stays on top)
-        customer_name = simpledialog.askstring("Customer Name", 
-                                               "Enter customer name (Arabic):",
+        customer_name = simpledialog.askstring("اسم العميل", 
+                                               "أدخل اسم العميل:",
                                                initialvalue="السيد نبيل حميدان المحترم",
                                                parent=self.window)
         if customer_name is None:
@@ -455,8 +492,8 @@ class PriceListWindow:
         self.window.focus_force()
         
         # Get date (optional, defaults to today) - with parent window
-        date_str = simpledialog.askstring("Date", 
-                                         "Enter date (YYYY/MM/DD) or leave blank for today:",
+        date_str = simpledialog.askstring("التاريخ", 
+                                         "أدخل التاريخ (YYYY/MM/DD) أو اتركه فارغاً لليوم:",
                                          initialvalue=datetime.now().strftime("%Y/%m/%d"),
                                          parent=self.window)
         if date_str is None:
@@ -472,319 +509,209 @@ class PriceListWindow:
         filename = filedialog.asksaveasfilename(
             defaultextension=".docx",
             filetypes=[("Word documents", "*.docx"), ("All files", "*.*")],
-            title="Save Price List",
+            title="حفظ عرض السعر",
             parent=self.window
         )
         
         if filename:
             try:
-                # Create Word document
-                doc = Document()
+                # Load template document
+                doc = Document(template_path)
                 
-                # Set document-level RTL direction
-                # This sets the default text direction for the entire document
-                try:
-                    settings = doc.settings
-                    settings_element = settings._element
-                    # Try to set document-level RTL (may not be directly supported)
-                    # Instead, we'll set it on all paragraphs and the default style
-                except:
-                    pass
+                # Helper function to replace placeholders in text
+                def replace_placeholder_in_runs(runs, placeholder, replacement):
+                    """Replace placeholder text in paragraph runs"""
+                    full_text = ''.join(run.text for run in runs)
+                    if placeholder in full_text:
+                        # Clear all runs
+                        for run in runs:
+                            run.text = ''
+                        # Recreate with replacement
+                        if runs:
+                            runs[0].text = full_text.replace(placeholder, replacement)
                 
-                # Set default paragraph style to RTL
-                # This ensures all new paragraphs inherit RTL direction
-                try:
-                    styles = doc.styles
-                    normal_style = styles['Normal']
-                    style_element = normal_style._element
-                    pPr = style_element.find(qn('w:pPr'))
-                    if pPr is None:
-                        pPr = OxmlElement('w:pPr')
-                        style_element.append(pPr)
-                    pPr.set(qn('w:bidi'), '1')
-                except:
-                    pass
+                # Replace placeholders in all paragraphs
+                placeholders = {
+                    '{CUSTOMER_NAME}': customer_name,
+                    '{DATE}': date_str,
+                    '{{CUSTOMER_NAME}}': customer_name,
+                    '{{DATE}}': date_str,
+                }
                 
-                # Set document margins
-                sections = doc.sections
-                for section in sections:
-                    section.top_margin = Inches(0.5)
-                    section.bottom_margin = Inches(0.5)
-                    section.left_margin = Inches(0.7)
-                    section.right_margin = Inches(0.7)
+                for para in doc.paragraphs:
+                    for placeholder, replacement in placeholders.items():
+                        if placeholder in para.text:
+                            # Replace in all runs
+                            for run in para.runs:
+                                if placeholder in run.text:
+                                    run.text = run.text.replace(placeholder, replacement)
+                            # Also check the paragraph text directly
+                            if placeholder in para.text:
+                                para.text = para.text.replace(placeholder, replacement)
+                
+                # Replace placeholders in table cells
+                for table in doc.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            for para in cell.paragraphs:
+                                for placeholder, replacement in placeholders.items():
+                                    if placeholder in para.text:
+                                        # Replace in all runs
+                                        for run in para.runs:
+                                            if placeholder in run.text:
+                                                run.text = run.text.replace(placeholder, replacement)
+                                        # Also check the paragraph text directly
+                                        if placeholder in para.text:
+                                            para.text = para.text.replace(placeholder, replacement)
+                
+                # Find and populate product table
+                # Look for a table with placeholder {PRODUCTS_TABLE} or find the first suitable table
+                product_table = None
+                product_table_placeholder_found = False
+                
+                # First, try to find a table with {PRODUCTS_TABLE} placeholder
+                for table in doc.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            for para in cell.paragraphs:
+                                if '{PRODUCTS_TABLE}' in para.text or '{{PRODUCTS_TABLE}}' in para.text:
+                                    product_table = table
+                                    product_table_placeholder_found = True
+                                    # Clear the placeholder cell
+                                    para.text = ''
+                                    break
+                        if product_table:
+                            break
+                    if product_table:
+                        break
+                
+                # If no placeholder found, use the first table (assuming it's the product table)
+                if not product_table and doc.tables:
+                    product_table = doc.tables[0]
+                
+                if product_table:
+                    # Clear existing rows except header (if placeholder was found, clear all)
+                    if product_table_placeholder_found:
+                        # Remove all rows
+                        for i in range(len(product_table.rows) - 1, -1, -1):
+                            product_table._element.remove(product_table.rows[i]._element)
+                        # Add header row
+                        header_row = product_table.add_row()
+                    else:
+                        # Keep first row as header, clear others
+                        while len(product_table.rows) > 1:
+                            product_table._element.remove(product_table.rows[-1]._element)
+                        header_row = product_table.rows[0]
                     
-                    # Set section to RTL as well
-                    sectPr = section._sectPr
-                    pgSz = sectPr.find(qn('w:pgSz'))
-                    if pgSz is not None:
-                        # Set page layout direction
-                        pass  # Page size doesn't need RTL
+                    # Set table RTL properties
+                    tbl = product_table._element
+                    tblPr = tbl.tblPr
+                    if tblPr is None:
+                        tblPr = OxmlElement('w:tblPr')
+                        tbl.insert(0, tblPr)
+                    tblPr.set(qn('w:bidiVisual'), '1')
+                    tblPr.set(qn('w:jc'), 'right')
                     
-                    # Set text direction on section
-                    sectPr.set(qn('w:bidi'), '1')
-                
-                # Helper function to ensure paragraph has RTL
-                def set_paragraph_rtl(para):
-                    """Ensure a paragraph has RTL direction set"""
-                    pPr = para._element.get_or_add_pPr()
-                    pPr.set(qn('w:bidi'), '1')
-                    return para
-                
-                # ===== HEADER SECTION =====
-                # Create header table
-                header_table = doc.add_table(rows=1, cols=3)
-                header_table.style = 'Table Grid'
-                header_table.autofit = False
-                
-                # Left cell - English company info
-                left_cell = header_table.rows[0].cells[0]
-                left_cell.width = Inches(3)
-                left_para = left_cell.paragraphs[0]
-                left_para.add_run("Technical Equipment").bold = True
-                left_para.add_run().font.size = Pt(14)
-                left_para = left_cell.add_paragraph("Industrial-Domestic")
-                left_para = left_cell.add_paragraph("Ventilation")
-                left_para = left_cell.add_paragraph()
-                left_para.add_run("M. Nazir Rabah").bold = True
-                left_para.add_run().font.size = Pt(12)
-                left_para = left_cell.add_paragraph("& Sons")
-                
-                # Center cell - Logo placeholder (red lines would be added manually or via image)
-                center_cell = header_table.rows[0].cells[1]
-                center_cell.width = Inches(1.5)
-                center_para = center_cell.paragraphs[0]
-                center_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                center_para.add_run("S&P").bold = True
-                center_para.add_run().font.size = Pt(10)
-                center_para = center_cell.add_paragraph()
-                center_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                center_para.add_run("CHAYSOL").font.size = Pt(8)
-                center_para = center_cell.add_paragraph()
-                center_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                center_para.add_run("emc").font.size = Pt(7)
-                
-                # Right cell - Arabic company info
-                right_cell = header_table.rows[0].cells[2]
-                right_cell.width = Inches(3)
-                right_para = right_cell.paragraphs[0]
-                right_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                # Set RTL properly for Arabic
-                pPr = right_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                right_run = right_para.add_run("التجهيزات التقنية")
-                right_run.bold = True
-                right_run.font.size = Pt(14)
-                right_para = right_cell.add_paragraph()
-                right_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = right_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                right_para.add_run("توربينات تهوية")
-                right_para = right_cell.add_paragraph()
-                right_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = right_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                right_para.add_run("منزلية. صناعية")
-                right_para = right_cell.add_paragraph()
-                right_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = right_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                right_para.add_run("محمد نذير رباح").bold = True
-                right_para.add_run().font.size = Pt(12)
-                right_para = right_cell.add_paragraph()
-                right_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = right_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                right_para.add_run("وأولاده")
-                
-                # Add spacing
-                doc.add_paragraph()
-                
-                # ===== TITLE SECTION =====
-                title_para = doc.add_paragraph()
-                title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                # Set RTL properly
-                pPr = title_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                title_run = title_para.add_run("عرض سعر")
-                title_run.bold = True
-                title_run.font.size = Pt(18)
-                
-                # Salutation (right-aligned Arabic)
-                salutation_para = doc.add_paragraph()
-                salutation_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = salutation_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                salutation_para.add_run(customer_name)
-                
-                doc.add_paragraph()
-                
-                # ===== PRODUCT TABLE =====
-                # Create main product table
-                product_table = doc.add_table(rows=1, cols=4)
-                product_table.style = 'Table Grid'
-                
-                # Set table direction to RTL for Arabic layout
-                tbl = product_table._element
-                tblPr = tbl.tblPr
-                if tblPr is None:
-                    tblPr = OxmlElement('w:tblPr')
-                    tbl.insert(0, tblPr)
-                # Set RTL visual order - this makes columns display right-to-left
-                tblPr.set(qn('w:bidiVisual'), '1')
-                # Also set the table to be right-to-left
-                tblPr.set(qn('w:jc'), 'right')  # Right justification for RTL
-                
-                # Table headers - for RTL, we reverse the order so they display correctly
-                # Visual order (right to left): النوع, الإفرادي, عدد, الإجمالي
-                # Code order (for RTL table): الإجمالي, عدد, الإفرادي, النوع
-                headers = ["الإجمالي", "عدد", "الإفرادي", "النوع"]
-                header_cells = product_table.rows[0].cells
-                
-                # Set column widths - reversed for RTL: الإجمالي, عدد, الإفرادي, النوع
-                widths = [Inches(1.2), Inches(0.8), Inches(1.2), Inches(4)]
-                
-                for i, header_text in enumerate(headers):
-                    cell = header_cells[i]
-                    cell.width = widths[i]
-                    para = cell.paragraphs[0]
-                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    # Set RTL properly for Arabic headers
-                    pPr = para._element.get_or_add_pPr()
-                    pPr.set(qn('w:bidi'), '1')
-                    run = para.add_run(header_text)
-                    run.bold = True
-                    run.font.size = Pt(11)
-                
-                # Add product rows
-                grand_total = 0
-                for item_data in self.selected_fans:
-                    fan = item_data['fan']
-                    qty = item_data['quantity']
-                    # Use individual price type for each item
-                    item_price_type = item_data.get('price_type', 'retail')
-                    unit_price = fan['price_retail'] if item_price_type == 'retail' else fan['price_wholesale']
-                    total_price = unit_price * qty
-                    grand_total += total_price
+                    # Ensure header exists with 4 columns
+                    header_cells = header_row.cells
+                    while len(header_cells) < 4:
+                        header_row._element.append(OxmlElement('w:tc'))
+                        header_cells = header_row.cells
                     
-                    row_cells = product_table.add_row().cells
+                    # Set header text (RTL order: الإجمالي, عدد, الإفرادي, النوع)
+                    headers = ["الإجمالي", "عدد", "الإفرادي", "النوع"]
+                    for i, header_text in enumerate(headers):
+                        if i < len(header_cells):
+                            cell = header_cells[i]
+                            # Clear existing content
+                            cell.text = ''
+                            para = cell.paragraphs[0]
+                            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            pPr = para._element.get_or_add_pPr()
+                            pPr.set(qn('w:bidi'), '1')
+                            run = para.add_run(header_text)
+                            run.bold = True
                     
-                    # Column order in code (for RTL): الإجمالي, عدد, الإفرادي, النوع
-                    # This displays as: النوع, الإفرادي, عدد, الإجمالي (right to left)
-                    
-                    # Column 0: الإجمالي (Total) - displays on left in RTL
-                    total_cell = row_cells[0]
-                    total_para = total_cell.paragraphs[0]
-                    total_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    total_para.add_run(f"$ {total_price:.0f}")
-                    
-                    # Column 1: عدد (Quantity)
-                    qty_cell = row_cells[1]
-                    qty_para = qty_cell.paragraphs[0]
-                    qty_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    qty_para.add_run(str(qty))
-                    
-                    # Column 2: الإفرادي (Unit Price)
-                    price_cell = row_cells[2]
-                    price_para = price_cell.paragraphs[0]
-                    price_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    price_para.add_run(f"{unit_price:.0f}")
-                    
-                    # Column 3: النوع (Type/Description) - displays on right in RTL
-                    type_cell = row_cells[3]
-                    type_para = type_cell.paragraphs[0]
-                    type_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                    # Set RTL properly
-                    pPr = type_para._element.get_or_add_pPr()
-                    pPr.set(qn('w:bidi'), '1')
-                    
-                    # Add description first (if exists), then name
-                    description = fan.get('description')
-                    description_text = description.strip() if description else ''
-                    if description_text:
-                        type_para.add_run(description_text)
-                        type_para = type_cell.add_paragraph()
-                        type_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                        pPr = type_para._element.get_or_add_pPr()
-                        pPr.set(qn('w:bidi'), '1')
-                    
-                    # Add name
-                    type_para.add_run(fan['name'])
-                    
-                    # Add airflow if exists
-                    airflow = fan.get('airflow')
-                    if airflow:
-                        type_para = type_cell.add_paragraph()
-                        type_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                        pPr = type_para._element.get_or_add_pPr()
-                        pPr.set(qn('w:bidi'), '1')
-                        type_para.add_run(f"Airflow: {airflow}")
+                    # Add product rows
+                    grand_total = 0
+                    for item_data in self.selected_fans:
+                        fan = item_data['fan']
+                        qty = item_data['quantity']
+                        item_price_type = item_data.get('price_type', 'retail')
+                        unit_price = fan['price_retail'] if item_price_type == 'retail' else fan['price_wholesale']
+                        total_price = unit_price * qty
+                        grand_total += total_price
+                        
+                        row_cells = product_table.add_row().cells
+                        
+                        # Column 0: الإجمالي (Total)
+                        if len(row_cells) > 0:
+                            total_cell = row_cells[0]
+                            total_para = total_cell.paragraphs[0]
+                            total_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            total_para.text = f"$ {total_price:.0f}"
+                        
+                        # Column 1: عدد (Quantity)
+                        if len(row_cells) > 1:
+                            qty_cell = row_cells[1]
+                            qty_para = qty_cell.paragraphs[0]
+                            qty_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            qty_para.text = str(qty)
+                        
+                        # Column 2: الإفرادي (Unit Price)
+                        if len(row_cells) > 2:
+                            price_cell = row_cells[2]
+                            price_para = price_cell.paragraphs[0]
+                            price_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            price_para.text = f"{unit_price:.0f}"
+                        
+                        # Column 3: النوع (Type/Description)
+                        if len(row_cells) > 3:
+                            type_cell = row_cells[3]
+                            type_cell.text = ''  # Clear cell
+                            type_para = type_cell.paragraphs[0]
+                            type_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+                            pPr = type_para._element.get_or_add_pPr()
+                            pPr.set(qn('w:bidi'), '1')
+                            
+                            # Add description first (if exists), then name
+                            description = fan.get('description')
+                            description_text = description.strip() if description else ''
+                            if description_text:
+                                type_para.add_run(description_text)
+                                type_para = type_cell.add_paragraph()
+                                type_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+                                pPr = type_para._element.get_or_add_pPr()
+                                pPr.set(qn('w:bidi'), '1')
+                            
+                            # Add name
+                            type_para.add_run(fan['name'])
+                            
+                            # Add airflow if exists
+                            airflow = fan.get('airflow')
+                            if airflow:
+                                type_para = type_cell.add_paragraph()
+                                type_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+                                pPr = type_para._element.get_or_add_pPr()
+                                pPr.set(qn('w:bidi'), '1')
+                                type_para.add_run(f"Airflow: {airflow}")
                 
-                doc.add_paragraph()
-                
-                # ===== FOOTER SECTION =====
-                # Notes section
-                notes_para = doc.add_paragraph()
-                notes_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = notes_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                notes_run = notes_para.add_run("ملاحظات:")
-                notes_run.bold = True
-                notes_run.font.size = Pt(11)
-                
-                note1_para = doc.add_paragraph()
-                note1_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = note1_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                note1_para.add_run("• المحرك الخارجي يتوفر لدينا نوع تشيكي يتم اختيار الاستطاعة المطلوبة على كتالوك التوربين حسب الغزارة والضغط")
-                
-                note2_para = doc.add_paragraph()
-                note2_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = note2_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                note2_para.add_run("• التسليم أرض الشركة بدمشق")
-                
-                doc.add_paragraph()
-                
-                # Contact information
-                contact_para = doc.add_paragraph()
-                contact_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                contact_para.add_run("DAMASCUS. SYRIA. TEL: (0096311) 2122066-2141283 - FAX: 2122048 - P.O.BOX 32157")
-                contact_para.runs[0].font.size = Pt(9)
-                
-                contact_arabic_para = doc.add_paragraph()
-                contact_arabic_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = contact_arabic_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                contact_arabic_para.add_run("دمشق . برامكة . جانب الهجرة والجوازات - 21220662 / 2141283 - فاكس : 2122048 / ص . ب 32157 - س . ت 12661")
-                contact_arabic_para.runs[0].font.size = Pt(9)
-                
-                # Date
-                date_para = doc.add_paragraph()
-                date_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                pPr = date_para._element.get_or_add_pPr()
-                pPr.set(qn('w:bidi'), '1')
-                date_para.add_run(f"مع تحياتنا {date_str}")
-                
-                # Ensure ALL paragraphs in the document have RTL set
-                # This ensures the entire document is RTL by default
+                # Ensure RTL is set on all paragraphs and table cells
                 for para in doc.paragraphs:
                     pPr = para._element.get_or_add_pPr()
-                    # Set RTL - this makes the paragraph right-to-left
                     pPr.set(qn('w:bidi'), '1')
                 
-                # Also set RTL on all paragraphs in all tables
                 for table in doc.tables:
                     for row in table.rows:
                         for cell in row.cells:
                             for para in cell.paragraphs:
                                 pPr = para._element.get_or_add_pPr()
-                                # Set RTL for all table cell paragraphs
                                 pPr.set(qn('w:bidi'), '1')
                 
                 # Save document
                 doc.save(filename)
                 
-                messagebox.showinfo("Success", f"Price list exported to {filename}")
+                messagebox.showinfo("نجح", f"تم تصدير عرض السعر إلى {filename}")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to export: {str(e)}")
                 import traceback
