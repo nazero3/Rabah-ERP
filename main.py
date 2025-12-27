@@ -1,12 +1,35 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
+import os
+import sys
 from database import InventoryDB
 from price_list_window import PriceListWindow
+
+# Helper function to get resource path (works both as script and as PyInstaller exe)
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
 
 class FanInventoryApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("رب")
+        # Load icon (if available)
+        try:
+            icon_path = resource_path('logo.ico')
+            if os.path.exists(icon_path):
+                icon_image = tk.PhotoImage(file=icon_path)
+                self.root.iconphoto(False, icon_image)  # Set False to use for this window only
+        except Exception:
+            # Icon file not found or failed to load - continue without icon
+            pass
+        self.root.title("رباح للتهوية")
         self.root.geometry("1000x700")
         
         self.db = InventoryDB()
@@ -25,7 +48,7 @@ class FanInventoryApp:
         main_frame.rowconfigure(2, weight=1)  # Table is in row 2
         
         # Title
-        self.title_label = ttk.Label(main_frame, text="Inventory Management System", 
+        self.title_label = ttk.Label(main_frame, text="ادارة المخزون", 
                                font=("Arial", 16, "bold"))
         self.title_label.grid(row=0, column=0, columnspan=3, pady=(0, 5))
         
@@ -56,6 +79,11 @@ class FanInventoryApp:
         self.delete_btn = ttk.Button(buttons_frame, text="حذف", command=self.delete_item, 
                   width=20)
         self.delete_btn.pack(pady=5, fill=tk.X)
+        
+        self.view_datasheet_btn = ttk.Button(buttons_frame, text="عرض الكتالوج", 
+                  command=self.view_datasheet, width=20)
+        # Initially hide - will be shown only for fans
+        # self.view_datasheet_btn.pack(pady=5, fill=tk.X)
         
         ttk.Button(buttons_frame, text="تحديث", command=self.refresh_table, 
                   width=20).pack(pady=5, fill=tk.X)
@@ -117,6 +145,9 @@ class FanInventoryApp:
         self.tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar_y.grid(row=0, column=1, sticky=(tk.N, tk.S))
         scrollbar_x.grid(row=1, column=0, sticky=(tk.W, tk.E))
+        
+        # Bind double-click event to view datasheet (for fans)
+        self.tree.bind('<Double-1>', self.on_item_double_click)
         
         # Setup columns based on product type
         self.setup_table_columns()
@@ -223,6 +254,12 @@ class FanInventoryApp:
         self.add_btn.config(text=labels[self.current_product_type][0])
         self.edit_btn.config(text=labels[self.current_product_type][1])
         self.delete_btn.config(text=labels[self.current_product_type][2])
+        
+        # Show/hide view datasheet button (only for fans)
+        if self.current_product_type == "fans":
+            self.view_datasheet_btn.pack(pady=5, fill=tk.X)
+        else:
+            self.view_datasheet_btn.pack_forget()
         
         # Update table columns
         self.setup_table_columns()
@@ -369,7 +406,7 @@ class FanInventoryApp:
         # For now, price list only works with fans
         # Can be extended later for other product types
         if self.current_product_type != "fans":
-            messagebox.showinfo("Info", "Price list feature is currently available only for Fans.")
+            messagebox.showinfo("معلومات", "ميزة عرض السعر متاحة حالياً للمراوح فقط.")
             return
         PriceListWindow(self.root, self.db)
     
@@ -393,27 +430,27 @@ class FanInventoryApp:
             try:
                 if self.current_product_type == "fans":
                     self.db.add_fan(**dialog.result)
-                    msg = "Fan added successfully!"
+                    msg = "تمت إضافة المروحة بنجاح!"
                 elif self.current_product_type == "sheet_metal":
                     self.db.add_sheet_metal(**dialog.result)
-                    msg = "Sheet Metal added successfully!"
+                    msg = "تمت إضافة الصاج بنجاح!"
                 else:  # flexible
                     self.db.add_flexible(**dialog.result)
-                    msg = "Flexible added successfully!"
+                    msg = "تمت إضافة الفلكسيبل بنجاح!"
                 
                 # Clear search to show all items including the new one
                 self.search_var.set("")
                 self.refresh_table()
-                messagebox.showinfo("Success", msg)
+                messagebox.showinfo("نجح", msg)
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to add item: {str(e)}")
+                messagebox.showerror("خطأ", f"فشلت إضافة العنصر: {str(e)}")
     
     def edit_item(self):
         """Open dialog to edit selected item"""
         selection = self.tree.selection()
         if not selection:
-            product_name = {"fans": "fan", "sheet_metal": "sheet metal", "flexible": "flexible"}
-            messagebox.showwarning("No Selection", f"Please select a {product_name[self.current_product_type]} to edit.")
+            product_name = {"fans": "مروحة", "sheet_metal": "صاج", "flexible": "فلكسيبل"}
+            messagebox.showwarning("لا يوجد تحديد", f"يرجى تحديد {product_name[self.current_product_type]} للتعديل.")
             return
         
         # Get item ID from the treeview item identifier (iid)
@@ -423,19 +460,19 @@ class FanInventoryApp:
         if self.current_product_type == "fans":
             item_data = self.db.get_fan_by_id(item_id)
             if not item_data:
-                messagebox.showerror("Error", "Item not found.")
+                messagebox.showerror("خطأ", "لم يتم العثور على العنصر.")
                 return
             dialog = FanDialog(self.root, "Edit Fan", item_data)
         elif self.current_product_type == "sheet_metal":
             item_data = self.db.get_sheet_metal_by_id(item_id)
             if not item_data:
-                messagebox.showerror("Error", "Item not found.")
+                messagebox.showerror("خطأ", "لم يتم العثور على العنصر.")
                 return
             dialog = SheetMetalDialog(self.root, "Edit Sheet Metal", item_data)
         else:  # flexible
             item_data = self.db.get_flexible_by_id(item_id)
             if not item_data:
-                messagebox.showerror("Error", "Item not found.")
+                messagebox.showerror("خطأ", "لم يتم العثور على العنصر.")
                 return
             dialog = FlexibleDialog(self.root, "Edit Flexible", item_data)
         
@@ -445,27 +482,97 @@ class FanInventoryApp:
             try:
                 if self.current_product_type == "fans":
                     self.db.update_fan(item_id, **dialog.result)
-                    msg = "Fan updated successfully!"
+                    msg = "تم تحديث المروحة بنجاح!"
                 elif self.current_product_type == "sheet_metal":
                     # Remove quantity if present (for backward compatibility)
                     result = {k: v for k, v in dialog.result.items() if k != 'quantity'}
                     self.db.update_sheet_metal(item_id, **result)
-                    msg = "Sheet Metal updated successfully!"
+                    msg = "تم تحديث الصاج بنجاح!"
                 else:  # flexible
                     self.db.update_flexible(item_id, **dialog.result)
-                    msg = "Flexible updated successfully!"
+                    msg = "تم تحديث الفلكسيبل بنجاح!"
                 
                 self.refresh_table()
-                messagebox.showinfo("Success", msg)
+                messagebox.showinfo("نجح", msg)
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to update item: {str(e)}")
+                messagebox.showerror("خطأ", f"فشل تحديث العنصر: {str(e)}")
+    
+    def on_item_double_click(self, event):
+        """Handle double-click on treeview item"""
+        selection = self.tree.selection()
+        if not selection:
+            return
+        
+        # Only handle double-click for fans
+        if self.current_product_type != "fans":
+            return
+        
+        # Get item ID from the treeview item identifier (iid)
+        item_id = int(selection[0])
+        
+        # Get fan data
+        item_data = self.db.get_fan_by_id(item_id)
+        if not item_data:
+            return
+        
+        # View datasheet
+        self._open_catalog_file(item_data)
+    
+    def view_datasheet(self):
+        """View the catalog/datasheet for selected fan"""
+        if self.current_product_type != "fans":
+            return
+        
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showwarning("لا يوجد تحديد", "يرجى تحديد مروحة لعرض الكتالوج.")
+            return
+        
+        # Get item ID from the treeview item identifier (iid)
+        item_id = int(selection[0])
+        
+        # Get fan data
+        item_data = self.db.get_fan_by_id(item_id)
+        if not item_data:
+            messagebox.showerror("خطأ", "لم يتم العثور على العنصر.")
+            return
+        
+        self._open_catalog_file(item_data)
+    
+    def _open_catalog_file(self, item_data):
+        """Open catalog file for a fan item"""
+        catalog_path = item_data.get('catalog_file_path')
+        if not catalog_path:
+            messagebox.showinfo("لا يوجد كتالوج", "لا يوجد ملف كتالوج مرتبط بهذه المروحة.\n\nيرجى تعديل المروحة واختيار ملف الكتالوج.")
+            return
+        
+        # Check if file exists
+        import os
+        if not os.path.exists(catalog_path):
+            messagebox.showerror("ملف غير موجود", 
+                f"ملف الكتالوج غير موجود:\n{catalog_path}\n\nيرجى التحقق من مسار الملف في تفاصيل المروحة.")
+            return
+        
+        # Open the file using the default system application
+        try:
+            import subprocess
+            import platform
+            
+            if platform.system() == 'Windows':
+                os.startfile(catalog_path)
+            elif platform.system() == 'Darwin':  # macOS
+                subprocess.run(['open', catalog_path])
+            else:  # Linux
+                subprocess.run(['xdg-open', catalog_path])
+        except Exception as e:
+            messagebox.showerror("خطأ", f"فشل فتح ملف الكتالوج:\n{str(e)}")
     
     def delete_item(self):
         """Delete selected item"""
         selection = self.tree.selection()
         if not selection:
-            product_name = {"fans": "fan", "sheet_metal": "sheet metal", "flexible": "flexible"}
-            messagebox.showwarning("No Selection", f"Please select a {product_name[self.current_product_type]} to delete.")
+            product_name = {"fans": "مروحة", "sheet_metal": "صاج", "flexible": "فلكسيبل"}
+            messagebox.showwarning("لا يوجد تحديد", f"يرجى تحديد {product_name[self.current_product_type]} للحذف.")
             return
         
         # Get item ID from the treeview item identifier (iid)
@@ -479,8 +586,8 @@ class FanInventoryApp:
         else:  # flexible
             item_name = item['values'][2]  # Diameter is last in RTL
         
-        if messagebox.askyesno("Confirm Delete", 
-                              f"Are you sure you want to delete '{item_name}'?"):
+        if messagebox.askyesno("تأكيد الحذف", 
+                              f"هل أنت متأكد أنك تريد حذف '{item_name}'؟"):
             try:
                 if self.current_product_type == "fans":
                     self.db.delete_fan(item_id)
@@ -490,9 +597,9 @@ class FanInventoryApp:
                     self.db.delete_flexible(item_id)
                 
                 self.refresh_table()
-                messagebox.showinfo("Success", "Item deleted successfully!")
+                messagebox.showinfo("نجح", "تم حذف العنصر بنجاح!")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to delete item: {str(e)}")
+                messagebox.showerror("خطأ", f"فشل حذف العنصر: {str(e)}")
     
     def toggle_search(self):
         """Toggle search bar visibility"""
@@ -519,8 +626,10 @@ class FanDialog:
         self.result = None
         
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title(title)
-        self.dialog.geometry("400x380")
+        # Translate title to Arabic
+        title_ar = "إضافة مروحة" if "Add" in title else "تعديل مروحة"
+        self.dialog.title(title_ar)
+        self.dialog.geometry("500x450")
         self.dialog.transient(parent)
         self.dialog.grab_set()
         
@@ -530,9 +639,11 @@ class FanDialog:
         y = (self.dialog.winfo_screenheight() // 2) - (self.dialog.winfo_height() // 2)
         self.dialog.geometry(f"+{x}+{y}")
         
-        # Form frame
+        # Form frame with RTL layout
         form_frame = ttk.Frame(self.dialog, padding="20")
         form_frame.pack(fill=tk.BOTH, expand=True)
+        form_frame.columnconfigure(0, weight=1)  # Entry column
+        form_frame.columnconfigure(1, weight=0)  # Label column
         
         # Helper function to bind keyboard shortcuts to entry widgets
         def bind_shortcuts(widget):
@@ -541,54 +652,84 @@ class FanDialog:
             widget.bind('<Control-x>', lambda e: widget.event_generate('<<Cut>>'))
             widget.bind('<Control-a>', lambda e: widget.select_range(0, tk.END))
         
+        # RTL Layout: Entry on left (column 0), Label on right (column 1)
         # Name
-        ttk.Label(form_frame, text="Name *:").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.name_var = tk.StringVar(value=fan_data['name'] if fan_data else "")
         name_entry = ttk.Entry(form_frame, textvariable=self.name_var, width=30)
-        name_entry.grid(row=0, column=1, pady=5)
+        name_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(name_entry)
+        ttk.Label(form_frame, text=":نوع *").grid(row=0, column=1, sticky=tk.E, pady=5)
         
         # Description
-        ttk.Label(form_frame, text="Description:").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.description_var = tk.StringVar(value=fan_data.get('description', '') if fan_data else "")
         description_entry = ttk.Entry(form_frame, textvariable=self.description_var, width=30)
-        description_entry.grid(row=1, column=1, pady=5)
+        description_entry.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(description_entry)
+        ttk.Label(form_frame, text=":الوصف").grid(row=1, column=1, sticky=tk.E, pady=5)
         
         # Airflow
-        ttk.Label(form_frame, text="Airflow:").grid(row=2, column=0, sticky=tk.W, pady=5)
         self.airflow_var = tk.StringVar(value=fan_data['airflow'] if fan_data and fan_data.get('airflow') else "")
         airflow_entry = ttk.Entry(form_frame, textvariable=self.airflow_var, width=30)
-        airflow_entry.grid(row=2, column=1, pady=5)
+        airflow_entry.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(airflow_entry)
+        ttk.Label(form_frame, text=":غزارة").grid(row=2, column=1, sticky=tk.E, pady=5)
         
         # Wholesale Price
-        ttk.Label(form_frame, text="Wholesale Price *:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.wholesale_var = tk.StringVar(value=str(fan_data['price_wholesale']) if fan_data else "")
         wholesale_entry = ttk.Entry(form_frame, textvariable=self.wholesale_var, width=30)
-        wholesale_entry.grid(row=3, column=1, pady=5)
+        wholesale_entry.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(wholesale_entry)
+        ttk.Label(form_frame, text=":سعر الجملة *").grid(row=3, column=1, sticky=tk.E, pady=5)
         
         # Retail Price
-        ttk.Label(form_frame, text="Retail Price *:").grid(row=4, column=0, sticky=tk.W, pady=5)
         self.retail_var = tk.StringVar(value=str(fan_data['price_retail']) if fan_data else "")
         retail_entry = ttk.Entry(form_frame, textvariable=self.retail_var, width=30)
-        retail_entry.grid(row=4, column=1, pady=5)
+        retail_entry.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(retail_entry)
+        ttk.Label(form_frame, text=":سعر المفرق *").grid(row=4, column=1, sticky=tk.E, pady=5)
         
         # Quantity
-        ttk.Label(form_frame, text="Quantity *:").grid(row=5, column=0, sticky=tk.W, pady=5)
         self.quantity_var = tk.StringVar(value=str(fan_data['quantity']) if fan_data else "0")
         quantity_entry = ttk.Entry(form_frame, textvariable=self.quantity_var, width=30)
-        quantity_entry.grid(row=5, column=1, pady=5)
+        quantity_entry.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(quantity_entry)
+        ttk.Label(form_frame, text=":الكمية *").grid(row=5, column=1, sticky=tk.E, pady=5)
         
-        # Buttons
+        # Catalog File Path (RTL layout)
+        catalog_frame = ttk.Frame(form_frame)
+        catalog_frame.grid(row=6, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
+        catalog_frame.columnconfigure(0, weight=1)
+        
+        self.catalog_path_var = tk.StringVar(value=fan_data.get('catalog_file_path', '') if fan_data else "")
+        catalog_entry = ttk.Entry(catalog_frame, textvariable=self.catalog_path_var, width=25)
+        catalog_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(5, 0))
+        bind_shortcuts(catalog_entry)
+        
+        def browse_catalog_file():
+            from tkinter import filedialog
+            filename = filedialog.askopenfilename(
+                title="اختر ملف الكتالوج",
+                filetypes=[
+                    ("All supported", "*.pdf;*.jpg;*.jpeg;*.png;*.docx"),
+                    ("PDF files", "*.pdf"),
+                    ("Image files", "*.jpg;*.jpeg;*.png"),
+                    ("Word files", "*.docx"),
+                    ("All files", "*.*")
+                ],
+                parent=self.dialog
+            )
+            if filename:
+                self.catalog_path_var.set(filename)
+        
+        ttk.Button(catalog_frame, text="تصفح", command=browse_catalog_file, width=10).grid(row=0, column=1)
+        ttk.Label(form_frame, text=":ملف الكتالوج").grid(row=6, column=1, sticky=tk.E, pady=5)
+        
+        # Buttons (RTL: Cancel on right, Save on left)
         button_frame = ttk.Frame(form_frame)
-        button_frame.grid(row=6, column=0, columnspan=2, pady=20)
+        button_frame.grid(row=7, column=0, columnspan=2, pady=20)
         
-        ttk.Button(button_frame, text="Save", command=self.save).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="إلغاء", command=self.cancel).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="حفظ", command=self.save).pack(side=tk.RIGHT, padx=5)
         
         self.dialog.protocol("WM_DELETE_WINDOW", self.cancel)
     
@@ -600,35 +741,38 @@ class FanDialog:
         wholesale = self.wholesale_var.get().strip()
         retail = self.retail_var.get().strip()
         quantity = self.quantity_var.get().strip()
+        catalog_path = self.catalog_path_var.get().strip() or None
         
-        # Validation
+        # Validation (Arabic messages)
         if not name:
-            messagebox.showerror("Validation Error", "Name is required.")
+            messagebox.showerror("خطأ في التحقق", "النوع مطلوب.")
             return
         
         try:
             price_wholesale = float(wholesale)
             if price_wholesale < 0:
-                raise ValueError("Price cannot be negative")
+                raise ValueError("السعر لا يمكن أن يكون سالباً")
         except ValueError:
-            messagebox.showerror("Validation Error", "Invalid wholesale price.")
+            messagebox.showerror("خطأ في التحقق", "سعر الجملة غير صحيح.")
             return
         
         try:
             price_retail = float(retail)
             if price_retail < 0:
-                raise ValueError("Price cannot be negative")
+                raise ValueError("السعر لا يمكن أن يكون سالباً")
         except ValueError:
-            messagebox.showerror("Validation Error", "Invalid retail price.")
+            messagebox.showerror("خطأ في التحقق", "سعر المفرق غير صحيح.")
             return
         
         try:
             qty = int(quantity)
             if qty < 0:
-                raise ValueError("Quantity cannot be negative")
+                raise ValueError("الكمية لا يمكن أن تكون سالبة")
         except ValueError:
-            messagebox.showerror("Validation Error", "Invalid quantity.")
+            messagebox.showerror("خطأ في التحقق", "الكمية غير صحيحة.")
             return
+        
+        catalog_path = self.catalog_path_var.get().strip() or None
         
         self.result = {
             'name': name,
@@ -636,7 +780,8 @@ class FanDialog:
             'airflow': airflow,
             'price_wholesale': price_wholesale,
             'price_retail': price_retail,
-            'quantity': qty
+            'quantity': qty,
+            'catalog_file_path': catalog_path
         }
         
         self.dialog.destroy()
@@ -651,7 +796,9 @@ class SheetMetalDialog:
         self.result = None
         
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title(title)
+        # Translate title to Arabic
+        title_ar = "إضافة صاج" if "Add" in title else "تعديل صاج"
+        self.dialog.title(title_ar)
         self.dialog.geometry("450x300")
         self.dialog.transient(parent)
         self.dialog.grab_set()
@@ -662,9 +809,11 @@ class SheetMetalDialog:
         y = (self.dialog.winfo_screenheight() // 2) - (self.dialog.winfo_height() // 2)
         self.dialog.geometry(f"+{x}+{y}")
         
-        # Form frame
+        # Form frame with RTL layout
         form_frame = ttk.Frame(self.dialog, padding="20")
         form_frame.pack(fill=tk.BOTH, expand=True)
+        form_frame.columnconfigure(0, weight=1)  # Entry column
+        form_frame.columnconfigure(1, weight=0)  # Label column
         
         # Helper function to bind keyboard shortcuts to entry widgets
         def bind_shortcuts(widget):
@@ -673,47 +822,48 @@ class SheetMetalDialog:
             widget.bind('<Control-x>', lambda e: widget.event_generate('<<Cut>>'))
             widget.bind('<Control-a>', lambda e: widget.select_range(0, tk.END))
         
+        # RTL Layout: Entry on left (column 0), Label on right (column 1)
         # Thickness
-        ttk.Label(form_frame, text="Thickness:").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.thickness_var = tk.StringVar(value=item_data.get('thickness', '') if item_data else "")
         thickness_entry = ttk.Entry(form_frame, textvariable=self.thickness_var, width=30)
-        thickness_entry.grid(row=0, column=1, pady=5)
+        thickness_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(thickness_entry)
+        ttk.Label(form_frame, text=":سماكة الصاج").grid(row=0, column=1, sticky=tk.E, pady=5)
         
         # Dimensions
-        ttk.Label(form_frame, text="Dimensions:").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.dimensions_var = tk.StringVar(value=item_data.get('dimensions', '') if item_data else "")
         dimensions_entry = ttk.Entry(form_frame, textvariable=self.dimensions_var, width=30)
-        dimensions_entry.grid(row=1, column=1, pady=5)
+        dimensions_entry.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(dimensions_entry)
+        ttk.Label(form_frame, text=":ابعاد الصندوق").grid(row=1, column=1, sticky=tk.E, pady=5)
         
         # Measurement
-        ttk.Label(form_frame, text="Measurement:").grid(row=2, column=0, sticky=tk.W, pady=5)
         self.measurement_var = tk.StringVar(value=item_data.get('measurement', '') if item_data else "")
         measurement_entry = ttk.Entry(form_frame, textvariable=self.measurement_var, width=30)
-        measurement_entry.grid(row=2, column=1, pady=5)
+        measurement_entry.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(measurement_entry)
+        ttk.Label(form_frame, text=":القياس").grid(row=2, column=1, sticky=tk.E, pady=5)
         
         # Cost
-        ttk.Label(form_frame, text="Cost *:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.cost_var = tk.StringVar(value=str(item_data.get('cost', '')) if item_data else "")
         cost_entry = ttk.Entry(form_frame, textvariable=self.cost_var, width=30)
-        cost_entry.grid(row=3, column=1, pady=5)
+        cost_entry.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(cost_entry)
+        ttk.Label(form_frame, text=":اجور *").grid(row=3, column=1, sticky=tk.E, pady=5)
         
         # Extra
-        ttk.Label(form_frame, text="Extra:").grid(row=4, column=0, sticky=tk.W, pady=5)
         self.extra_var = tk.StringVar(value=item_data.get('extra', '') if item_data else "")
         extra_entry = ttk.Entry(form_frame, textvariable=self.extra_var, width=30)
-        extra_entry.grid(row=4, column=1, pady=5)
+        extra_entry.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(extra_entry)
+        ttk.Label(form_frame, text=":عزل و ارموفلكس").grid(row=4, column=1, sticky=tk.E, pady=5)
         
-        # Buttons
+        # Buttons (RTL: Cancel on right, Save on left)
         button_frame = ttk.Frame(form_frame)
         button_frame.grid(row=5, column=0, columnspan=2, pady=20)
         
-        ttk.Button(button_frame, text="Save", command=self.save).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="إلغاء", command=self.cancel).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="حفظ", command=self.save).pack(side=tk.RIGHT, padx=5)
         
         self.dialog.protocol("WM_DELETE_WINDOW", self.cancel)
     
@@ -725,13 +875,13 @@ class SheetMetalDialog:
         cost = self.cost_var.get().strip()
         extra = self.extra_var.get().strip() or None
         
-        # Validation
+        # Validation (Arabic messages)
         try:
             cost_value = float(cost)
             if cost_value < 0:
-                raise ValueError("Cost cannot be negative")
+                raise ValueError("الأجور لا يمكن أن تكون سالبة")
         except ValueError:
-            messagebox.showerror("Validation Error", "Invalid cost.")
+            messagebox.showerror("خطأ في التحقق", "الأجور غير صحيحة.")
             return
         
         self.result = {
@@ -754,7 +904,9 @@ class FlexibleDialog:
         self.result = None
         
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title(title)
+        # Translate title to Arabic
+        title_ar = "إضافة فلكسيبل" if "Add" in title else "تعديل فلكسيبل"
+        self.dialog.title(title_ar)
         self.dialog.geometry("400x250")
         self.dialog.transient(parent)
         self.dialog.grab_set()
@@ -765,9 +917,11 @@ class FlexibleDialog:
         y = (self.dialog.winfo_screenheight() // 2) - (self.dialog.winfo_height() // 2)
         self.dialog.geometry(f"+{x}+{y}")
         
-        # Form frame
+        # Form frame with RTL layout
         form_frame = ttk.Frame(self.dialog, padding="20")
         form_frame.pack(fill=tk.BOTH, expand=True)
+        form_frame.columnconfigure(0, weight=1)  # Entry column
+        form_frame.columnconfigure(1, weight=0)  # Label column
         
         # Helper function to bind keyboard shortcuts to entry widgets
         def bind_shortcuts(widget):
@@ -776,40 +930,41 @@ class FlexibleDialog:
             widget.bind('<Control-x>', lambda e: widget.event_generate('<<Cut>>'))
             widget.bind('<Control-a>', lambda e: widget.select_range(0, tk.END))
         
+        # RTL Layout: Entry on left (column 0), Label on right (column 1)
         # Description
-        ttk.Label(form_frame, text="Description:").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.description_var = tk.StringVar(value=item_data.get('description', '') if item_data else "")
         description_entry = ttk.Entry(form_frame, textvariable=self.description_var, width=30)
-        description_entry.grid(row=0, column=1, pady=5)
+        description_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(description_entry)
+        ttk.Label(form_frame, text=":الوصف").grid(row=0, column=1, sticky=tk.E, pady=5)
         
         # Diameter
-        ttk.Label(form_frame, text="Diameter:").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.diameter_var = tk.StringVar(value=item_data.get('diameter', '') if item_data else "")
         diameter_entry = ttk.Entry(form_frame, textvariable=self.diameter_var, width=30)
-        diameter_entry.grid(row=1, column=1, pady=5)
+        diameter_entry.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(diameter_entry)
+        ttk.Label(form_frame, text=":قطر").grid(row=1, column=1, sticky=tk.E, pady=5)
         
         # Collection
-        ttk.Label(form_frame, text="Collection:").grid(row=2, column=0, sticky=tk.W, pady=5)
         self.collection_var = tk.StringVar(value=item_data.get('collection', '') if item_data else "")
         collection_entry = ttk.Entry(form_frame, textvariable=self.collection_var, width=30)
-        collection_entry.grid(row=2, column=1, pady=5)
+        collection_entry.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(collection_entry)
+        ttk.Label(form_frame, text=":ربطة").grid(row=2, column=1, sticky=tk.E, pady=5)
         
         # Meter
-        ttk.Label(form_frame, text="Meter *:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.meter_var = tk.StringVar(value=str(item_data.get('meter', '')) if item_data else "")
         meter_entry = ttk.Entry(form_frame, textvariable=self.meter_var, width=30)
-        meter_entry.grid(row=3, column=1, pady=5)
+        meter_entry.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5, padx=(0, 10))
         bind_shortcuts(meter_entry)
+        ttk.Label(form_frame, text=":متر *").grid(row=3, column=1, sticky=tk.E, pady=5)
         
-        # Buttons
+        # Buttons (RTL: Cancel on right, Save on left)
         button_frame = ttk.Frame(form_frame)
         button_frame.grid(row=4, column=0, columnspan=2, pady=20)
         
-        ttk.Button(button_frame, text="Save", command=self.save).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="إلغاء", command=self.cancel).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="حفظ", command=self.save).pack(side=tk.RIGHT, padx=5)
         
         self.dialog.protocol("WM_DELETE_WINDOW", self.cancel)
     
@@ -820,13 +975,13 @@ class FlexibleDialog:
         collection = self.collection_var.get().strip() or None
         meter = self.meter_var.get().strip()
         
-        # Validation
+        # Validation (Arabic messages)
         try:
             meter_value = float(meter)
             if meter_value < 0:
-                raise ValueError("Meter cannot be negative")
+                raise ValueError("المتر لا يمكن أن يكون سالباً")
         except ValueError:
-            messagebox.showerror("Validation Error", "Invalid meter value.")
+            messagebox.showerror("خطأ في التحقق", "قيمة المتر غير صحيحة.")
             return
         
         self.result = {

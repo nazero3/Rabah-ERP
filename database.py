@@ -26,10 +26,17 @@ class InventoryDB:
                 price_wholesale REAL NOT NULL,
                 price_retail REAL NOT NULL,
                 quantity INTEGER NOT NULL DEFAULT 0,
+                catalog_file_path TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # Add catalog_file_path column to existing databases (migration)
+        try:
+            cursor.execute('ALTER TABLE fans ADD COLUMN catalog_file_path TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         
         # Sheet Metal table
         cursor.execute('''
@@ -131,15 +138,16 @@ class InventoryDB:
         conn.close()
     
     def add_fan(self, name: str, description: Optional[str], airflow: Optional[str], 
-                price_wholesale: float, price_retail: float, quantity: int) -> int:
+                price_wholesale: float, price_retail: float, quantity: int, 
+                catalog_file_path: Optional[str] = None) -> int:
         """Add a new fan to inventory"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT INTO fans (name, description, airflow, price_wholesale, price_retail, quantity)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (name, description, airflow, price_wholesale, price_retail, quantity))
+            INSERT INTO fans (name, description, airflow, price_wholesale, price_retail, quantity, catalog_file_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (name, description, airflow, price_wholesale, price_retail, quantity, catalog_file_path))
         
         fan_id = cursor.lastrowid
         conn.commit()
@@ -147,7 +155,8 @@ class InventoryDB:
         return fan_id
     
     def update_fan(self, fan_id: int, name: str, description: Optional[str], 
-                   airflow: Optional[str], price_wholesale: float, price_retail: float, quantity: int):
+                   airflow: Optional[str], price_wholesale: float, price_retail: float, quantity: int,
+                   catalog_file_path: Optional[str] = None):
         """Update an existing fan"""
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -155,9 +164,9 @@ class InventoryDB:
         cursor.execute('''
             UPDATE fans 
             SET name = ?, description = ?, airflow = ?, price_wholesale = ?, price_retail = ?, 
-                quantity = ?, updated_at = CURRENT_TIMESTAMP
+                quantity = ?, catalog_file_path = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        ''', (name, description, airflow, price_wholesale, price_retail, quantity, fan_id))
+        ''', (name, description, airflow, price_wholesale, price_retail, quantity, catalog_file_path, fan_id))
         
         conn.commit()
         conn.close()
