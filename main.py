@@ -20,12 +20,36 @@ def resource_path(relative_path):
 class FanInventoryApp:
     def __init__(self, root):
         self.root = root
-        # Load icon (if available)
+        # Load window icon (if available) - works both as script and as PyInstaller exe
+        # Note: For Windows taskbar icon, we use iconbitmap with .ico file
+        # For window title bar icon, we use iconphoto with PNG/GIF
         try:
-            icon_path = resource_path('logo.ico')
-            if os.path.exists(icon_path):
-                icon_image = tk.PhotoImage(file=icon_path)
-                self.root.iconphoto(False, icon_image)  # Set False to use for this window only
+            # Try to set .ico file for taskbar icon (Windows)
+            icon_ico_path = None
+            if os.path.exists('logo.ico'):
+                icon_ico_path = 'logo.ico'
+            else:
+                try:
+                    icon_ico_path = resource_path('logo.ico')
+                except:
+                    pass
+            
+            if icon_ico_path and os.path.exists(icon_ico_path):
+                self.root.iconbitmap(icon_ico_path)  # Sets taskbar and window icon on Windows
+            
+            # Also try PNG for window icon (cross-platform, fallback)
+            icon_png_path = None
+            if os.path.exists('logo.png'):
+                icon_png_path = 'logo.png'
+            else:
+                try:
+                    icon_png_path = resource_path('logo.png')
+                except:
+                    pass
+            
+            if icon_png_path and os.path.exists(icon_png_path):
+                icon_image = tk.PhotoImage(file=icon_png_path)
+                self.root.iconphoto(False, icon_image)  # Set window icon
         except Exception:
             # Icon file not found or failed to load - continue without icon
             pass

@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('database.py', '.'), ('price_list_window.py', '.'), ('logo.png', '.'), ('format.docx', '.')]
+datas = [('database.py', '.'), ('price_list_window.py', '.'), ('logo.png', '.'), ('logo.ico', '.'), ('format.docx', '.')]
 binaries = []
 hiddenimports = ['tkinter', 'sqlite3', 'docx', 'docx.shared', 'docx.oxml.ns', 'docx.oxml']
 tmp_ret = collect_all('docx')
@@ -42,5 +42,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['logo.ico'],
 )
