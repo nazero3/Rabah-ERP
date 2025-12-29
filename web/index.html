@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>رباح للتهوية - Rabah ERP</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="page">
+        <div class="login-container">
+            <div class="login-box">
+                <h1>رباح للتهوية</h1>
+                <h2>Rabah ERP System</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">اسم المستخدم / Username:</label>
+                        <input type="text" id="username" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">كلمة المرور / Password:</label>
+                        <input type="password" id="password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">تسجيل الدخول / Login</button>
+                    <div id="loginError" class="error-message"></div>
+                </form>
+                <div class="login-info">
+                    <p><strong>Note:</strong> Default admin credentials are set on first run.</p>
+                    <p>Contact administrator to reset password if needed.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Page -->
+    <div id="mainPage" class="page hidden">
+        <div class="header">
+            <h1>ادارة المخزون - Inventory Management System</h1>
+            <div class="header-actions">
+                <span id="currentUser" class="user-info"></span>
+                <button id="logoutBtn" class="btn btn-secondary">تسجيل الخروج / Logout</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <!-- Product Type Selection -->
+            <div class="product-type-section">
+                <label>نوع المنتج / Product Type:</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="productType" value="fans" checked> مراوح / Fans</label>
+                    <label><input type="radio" name="productType" value="sheet_metal"> صاج / Sheet Metal</label>
+                    <label><input type="radio" name="productType" value="flexible"> فلكسيبل / Flexible</label>
+                </div>
+            </div>
+
+            <!-- Search Section -->
+            <div class="search-section">
+                <button id="toggleSearchBtn" class="btn btn-secondary">🔍 إظهار البحث / Show Search</button>
+                <div id="searchContainer" class="hidden">
+                    <input type="text" id="searchInput" placeholder="بحث / Search...">
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button id="addBtn" class="btn btn-primary">إضافة / Add</button>
+                <button id="editBtn" class="btn btn-primary">تعديل / Edit</button>
+                <button id="deleteBtn" class="btn btn-danger">حذف / Delete</button>
+                <button id="refreshBtn" class="btn btn-secondary">تحديث / Refresh</button>
+                <button id="priceListBtn" class="btn btn-success">إنشاء عرض سعر / Create Price List</button>
+                <button id="viewDatasheetBtn" class="btn btn-info hidden">عرض الكتالوج / View Catalog</button>
+            </div>
+
+            <!-- Sort Buttons -->
+            <div class="sort-section">
+                <label>ترتيب حسب / Sort by:</label>
+                <div id="sortButtons" class="sort-buttons"></div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container">
+                <table id="dataTable" class="data-table">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="itemModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">إضافة عنصر / Add Item</h2>
+            <form id="itemForm"></form>
+            <div class="modal-actions">
+                <button type="submit" form="itemForm" class="btn btn-primary">حفظ / Save</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">إلغاء / Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="priceListModal" class="modal hidden">
+        <div class="modal-content large">
+            <span class="close" onclick="closePriceListModal()">&times;</span>
+            <h2>عرض السعر / Price List</h2>
+            <div id="priceListContent"></div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="database.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

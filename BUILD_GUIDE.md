@@ -98,3 +98,4 @@ When distributing your application, include:
 - First run may be slower as files are extracted to a temporary location
 - Antivirus software may flag the .exe (false positive) - this is normal for PyInstaller executables
 - The executable works on the same Windows version where it was built (or compatible versions)
+

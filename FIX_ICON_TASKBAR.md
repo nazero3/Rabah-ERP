@@ -76,3 +76,4 @@ After rebuilding, test by:
 3. Running it - if the icon appears, it was a cache issue
 
 If none of these work, the issue might be with the .ico file itself - try recreating it from your original image.
+
