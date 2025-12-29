@@ -9,7 +9,7 @@ class AuthManager {
         // Check if admin credentials exist, if not create default
         if (!localStorage.getItem('admin_username')) {
             localStorage.setItem('admin_username', 'admin');
-            localStorage.setItem('admin_password', this.hashPassword('admin123'));
+            localStorage.setItem('admin_password', this.hashPassword('TechEquipRab*2025'));
         }
 
         // Check if user is already logged in
