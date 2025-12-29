@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Data to Web Version</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            direction: rtl;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 30px;
+            border-radius: 10px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        #fileInput {
+            margin: 20px 0;
+            padding: 10px;
+            width: 100%;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>استيراد البيانات / Import Data</h1>
+        
+        <div class="info">
+            <strong>تعليمات / Instructions:</strong><br>
+            1. تأكد من تسجيل الخروج من النسخة الويب أولاً<br>
+            2. اختر ملف JSON المُصدّر<br>
+            3. انقر على "استيراد البيانات"<br>
+            4. بعد الاستيراد، سجل دخول مرة أخرى<br><br>
+            
+            <strong>English:</strong><br>
+            1. Make sure you're logged out of the web version first<br>
+            2. Select the exported JSON file<br>
+            3. Click "Import Data"<br>
+            4. After import, log in again
+        </div>
+        
+        <input type="file" id="fileInput" accept=".json">
+        <button onclick="importData()">استيراد البيانات / Import Data</button>
+        <button onclick="window.location.href='index.html'">العودة للتطبيق / Back to App</button>
+        
+        <div id="result"></div>
+    </div>
+    
+    <script>
+        function importData() {
+            const fileInput = document.getElementById('fileInput');
+            const resultDiv = document.getElementById('result');
+            
+            if (!fileInput.files.length) {
+                showResult('يرجى اختيار ملف / Please select a file', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Import to localStorage
+                    if (data.fans) {
+                        localStorage.setItem('fans_db', JSON.stringify(data.fans));
+                    }
+                    if (data.sheet_metal) {
+                        localStorage.setItem('sheet_metal_db', JSON.stringify(data.sheet_metal));
+                    }
+                    if (data.flexible) {
+                        localStorage.setItem('flexible_db', JSON.stringify(data.flexible));
+                    }
+                    
+                    const total = (data.fans?.length || 0) + 
+                                 (data.sheet_metal?.length || 0) + 
+                                 (data.flexible?.length || 0);
+                    
+                    showResult(
+                        `تم الاستيراد بنجاح! / Import successful!<br>` +
+                        `- Fans: ${data.fans?.length || 0}<br>` +
+                        `- Sheet Metal: ${data.sheet_metal?.length || 0}<br>` +
+                        `- Flexible: ${data.flexible?.length || 0}<br>` +
+                        `- Total: ${total} items`,
+                        'success'
+                    );
+                } catch (error) {
+                    showResult('خطأ في قراءة الملف / Error reading file: ' + error.message, 'error');
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = type;
+            resultDiv.innerHTML = message;
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

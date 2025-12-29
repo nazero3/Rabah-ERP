@@ -209,3 +209,4 @@ class Database {
 
 // Initialize database
 const db = new Database();
+
