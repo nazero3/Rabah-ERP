@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إنشاء عرض سعر / Create Price List</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="price_list_styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>مولد عرض السعر / الاستفسار / Price List Generator</h1>
+        <div class="header-actions">
+            <button onclick="window.close()" class="btn btn-secondary">إغلاق / Close</button>
+        </div>
+    </div>
+
+    <div class="price-list-container">
+        <!-- Left Panel: Available Fans -->
+        <div class="panel">
+            <div class="panel-header">المراوح المتاحة / Available Fans</div>
+            
+            <div class="search-section-price">
+                <input type="text" id="availableSearch" placeholder="بحث / Search...">
+            </div>
+
+            <div class="table-wrapper">
+                <table class="price-list-table" id="availableTable">
+                    <thead>
+                        <tr>
+                            <th>الكمية / Qty</th>
+                            <th>مفرق / Retail</th>
+                            <th>جملة / Wholesale</th>
+                            <th>غزارة / Airflow</th>
+                            <th>نوع / Name</th>
+                        </tr>
+                    </thead>
+                    <tbody id="availableTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="action-buttons-price">
+                <button class="btn btn-primary" onclick="addToPriceList()">← إضافة إلى عرض السعر / Add to Price List</button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Price List -->
+        <div class="panel">
+            <div class="panel-header">عرض السعر / الاستفسار / Price List</div>
+            
+            <div class="info-text">
+                انقر نقراً مزدوجاً على نوع السعر أو الكمية للتعديل / Double-click on price type or quantity to edit
+            </div>
+
+            <div class="table-wrapper">
+                <table class="price-list-table" id="priceListTable">
+                    <thead>
+                        <tr>
+                            <th>إجراءات / Actions</th>
+                            <th>الكمية / Quantity</th>
+                            <th>نوع السعر / Price Type</th>
+                            <th>السعر / Price</th>
+                            <th>الإجمالي / Total</th>
+                            <th>غزارة / Airflow</th>
+                            <th>نوع / Name</th>
+                        </tr>
+                    </thead>
+                    <tbody id="priceListTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="price-list-actions">
+                <button class="btn btn-danger" onclick="removeFromPriceList()">حذف / Remove</button>
+                <button class="btn btn-secondary" onclick="moveUp()">↑ أعلى / Up</button>
+                <button class="btn btn-secondary" onclick="moveDown()">↓ أسفل / Down</button>
+                <button class="btn btn-secondary" onclick="sortById()">ترتيب حسب ID / Sort by ID</button>
+                <button class="btn btn-success" onclick="exportToWord()">تصدير إلى Word / Export to Word</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="database.js"></script>
+    <script src="price_list.js"></script>
+</body>
+</html>

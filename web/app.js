@@ -18,6 +18,7 @@ class App {
                 this.currentProductType = e.target.value;
                 this.selectedItemId = null;
                 this.updateSortButtons();
+                this.updateViewDatasheetButton();
                 this.refreshTable();
             });
         });
@@ -35,6 +36,9 @@ class App {
             }
         });
         document.getElementById('viewDatasheetBtn').addEventListener('click', () => this.viewDatasheet());
+        document.getElementById('importBtn').addEventListener('click', () => {
+            window.location.href = 'import.html';
+        });
 
         // Search
         document.getElementById('toggleSearchBtn').addEventListener('click', () => this.toggleSearch());
@@ -43,7 +47,7 @@ class App {
             this.refreshTable();
         });
 
-        // Table row click
+        // Table row click (single click for selection)
         document.getElementById('tableBody').addEventListener('click', (e) => {
             const row = e.target.closest('tr');
             if (row) {
@@ -53,12 +57,31 @@ class App {
             }
         });
 
+        // Table row double-click (for viewing datasheet - fans only)
+        document.getElementById('tableBody').addEventListener('dblclick', (e) => {
+            const row = e.target.closest('tr');
+            if (row && this.currentProductType === 'fans') {
+                const itemId = parseInt(row.dataset.id);
+                this.viewDatasheetForItem(itemId);
+            }
+        });
+
         // Modal close
         document.querySelector('.close').addEventListener('click', () => this.closeModal());
 
         // Initial setup
         this.updateSortButtons();
+        this.updateViewDatasheetButton();
         this.refreshTable();
+    }
+
+    updateViewDatasheetButton() {
+        const btn = document.getElementById('viewDatasheetBtn');
+        if (this.currentProductType === 'fans') {
+            btn.classList.remove('hidden');
+        } else {
+            btn.classList.add('hidden');
+        }
     }
 
     updateSortButtons() {
@@ -181,20 +204,26 @@ class App {
         });
         thead.appendChild(headerRow);
 
-        // Create rows
-        items.forEach(item => {
-            const row = document.createElement('tr');
-            row.dataset.id = item.id;
-            
-            columns.forEach(col => {
-                const td = document.createElement('td');
-                const value = item[col.key];
-                td.textContent = value !== null && value !== undefined ? value : '';
-                row.appendChild(td);
+            // Create rows
+            items.forEach(item => {
+                const row = document.createElement('tr');
+                row.dataset.id = item.id;
+                
+                // Add cursor style for fans (to indicate double-click functionality)
+                if (this.currentProductType === 'fans') {
+                    row.style.cursor = 'pointer';
+                    row.title = 'انقر نقراً مزدوجاً لعرض الكتالوج / Double-click to view catalog';
+                }
+                
+                columns.forEach(col => {
+                    const td = document.createElement('td');
+                    const value = item[col.key];
+                    td.textContent = value !== null && value !== undefined ? value : '';
+                    row.appendChild(td);
+                });
+                
+                tbody.appendChild(row);
             });
-            
-            tbody.appendChild(row);
-        });
     }
 
     showAddDialog() {
@@ -379,26 +408,74 @@ class App {
             alert('يرجى تحديد مروحة لعرض الكتالوج / Please select a fan to view catalog');
             return;
         }
+        this.viewDatasheetForItem(this.selectedItemId);
+    }
 
-        const fan = db.getFanById(this.selectedItemId);
-        if (!fan || !fan.catalog_file_path) {
-            alert('لا يوجد ملف كتالوج مرتبط بهذه المروحة / No catalog file linked to this fan');
+    viewDatasheetForItem(itemId) {
+        if (this.currentProductType !== 'fans') {
             return;
         }
 
-        // In web version, we can open the file if it's a URL, or show a message
-        if (fan.catalog_file_path.startsWith('http')) {
-            window.open(fan.catalog_file_path, '_blank');
-        } else {
-            alert('ملف الكتالوج: ' + fan.catalog_file_path + '\nيرجى فتح الملف يدوياً / Please open the file manually');
+        const fan = db.getFanById(itemId);
+        if (!fan) {
+            alert('لم يتم العثور على المروحة / Fan not found');
+            return;
         }
+
+        if (!fan.catalog_file_path) {
+            alert('لا يوجد ملف كتالوج مرتبط بهذه المروحة.\n\nيرجى تعديل المروحة واختيار ملف الكتالوج.\n\nNo catalog file linked to this fan.\n\nPlease edit the fan and select a catalog file.');
+            return;
+        }
+
+        const catalogPath = fan.catalog_file_path;
+
+        // Check if it's a URL (http/https)
+        if (catalogPath.startsWith('http://') || catalogPath.startsWith('https://')) {
+            // Open URL in new tab
+            window.open(catalogPath, '_blank');
+            return;
+        }
+
+        // Check if it's a data URL (base64 encoded)
+        if (catalogPath.startsWith('data:')) {
+            window.open(catalogPath, '_blank');
+            return;
+        }
+
+        // For local file paths, we need to handle differently
+        // Option 1: If file is in the same domain (for deployed version)
+        // Option 2: Show message with instructions
+        
+        // Try to open as relative URL first (if file is in web folder)
+        if (catalogPath.startsWith('./') || catalogPath.startsWith('../') || !catalogPath.includes(':')) {
+            // Relative path - try to open it
+            const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
+            const fullUrl = baseUrl + catalogPath.replace(/^\.\//, '');
+            window.open(fullUrl, '_blank');
+            return;
+        }
+
+        // Absolute local path (Windows: C:\, Linux: /, etc.)
+        // Browser security prevents opening local files directly
+        alert(
+            'ملف الكتالوج: ' + catalogPath + '\n\n' +
+            'لا يمكن فتح الملفات المحلية مباشرة من المتصفح.\n' +
+            'يرجى:\n' +
+            '1. رفع الملف إلى خدمة تخزين سحابي (Google Drive, Dropbox)\n' +
+            '2. الحصول على رابط مشاركة\n' +
+            '3. تحديث مسار الملف في تفاصيل المروحة\n\n' +
+            'Catalog file: ' + catalogPath + '\n\n' +
+            'Cannot open local files directly from browser.\n' +
+            'Please:\n' +
+            '1. Upload file to cloud storage (Google Drive, Dropbox)\n' +
+            '2. Get shareable link\n' +
+            '3. Update file path in fan details'
+        );
     }
 
     showPriceListWindow() {
-        // This would open a price list window
-        // For now, show a simple implementation
-        alert('Price list feature - to be implemented with Word export');
-        // TODO: Implement full price list window
+        // Open price list window in new tab/window
+        window.open('price_list.html', '_blank', 'width=1400,height=800');
     }
 }
 
