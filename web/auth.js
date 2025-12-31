@@ -96,3 +96,4 @@ class AuthManager {
 // Initialize auth manager
 const authManager = new AuthManager();
 
+

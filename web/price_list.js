@@ -678,3 +678,4 @@ function exportToWord() {
 document.addEventListener('DOMContentLoaded', () => {
     priceListManager = new PriceListManager();
 });
+

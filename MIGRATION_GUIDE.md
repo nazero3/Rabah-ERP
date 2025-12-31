@@ -181,3 +181,4 @@ copy web_data_export.json web\
 - Check that `inventory.db` exists in project root
 - Verify Python can access sqlite3
 - Check browser console for import errors
+

@@ -282,3 +282,4 @@ if __name__ == "__main__":
         print("=" * 50)
     else:
         print("\nMigration failed. Please check the error above.")
+
