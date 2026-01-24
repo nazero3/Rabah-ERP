@@ -241,6 +241,11 @@ body {
     background: #2980b9;
 }
 
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
 /* Table */
 .table-container {
     background: white;
@@ -410,5 +415,7 @@ body {
         flex-direction: column;
     }
 }
+
+
 
 

@@ -339,34 +339,40 @@ class PriceListManager {
         const date = prompt('أدخل التاريخ / Enter date:', new Date().toLocaleDateString('ar-SA')) || new Date().toLocaleDateString();
 
         try {
-            // Load the template file - try multiple paths
+            // Load the template file - try multiple paths and filenames
+            const selectedFormat = 'format.docx';
             const templatePaths = [
-                'format.docx',
-                './format.docx',
-                'web/format.docx',
-                '../format.docx'
+                selectedFormat,
+                './' + selectedFormat,
+                'web/' + selectedFormat,
+                '../' + selectedFormat,
+                '../web/' + selectedFormat,
+                '../../' + selectedFormat
             ];
             
             let templateData = null;
             let loadedPath = null;
             
-            for (const templatePath of templatePaths) {
-                try {
-                    const response = await fetch(templatePath, {
-                        method: 'GET',
-                        cache: 'no-cache'
-                    });
-                    
-                    if (response.ok) {
-                        templateData = await response.arrayBuffer();
-                        loadedPath = templatePath;
-                        console.log('Template loaded from:', templatePath);
-                        break;
-                    } else {
-                        console.warn('Failed to load from', templatePath, '- Status:', response.status);
+            // Only try auto-loading if a format was selected (not manual selection)
+            if (templatePaths.length > 0) {
+                for (const templatePath of templatePaths) {
+                    try {
+                        const response = await fetch(templatePath, {
+                            method: 'GET',
+                            cache: 'no-cache'
+                        });
+                        
+                        if (response.ok) {
+                            templateData = await response.arrayBuffer();
+                            loadedPath = templatePath;
+                            console.log('Template loaded from:', templatePath);
+                            break;
+                        } else {
+                            console.warn('Failed to load from', templatePath, '- Status:', response.status);
+                        }
+                    } catch (err) {
+                        console.warn('Error loading from', templatePath, ':', err.message);
                     }
-                } catch (err) {
-                    console.warn('Error loading from', templatePath, ':', err.message);
                 }
             }
             
@@ -376,14 +382,17 @@ class PriceListManager {
                 const modal = document.createElement('div');
                 modal.className = 'modal';
                 modal.style.display = 'flex';
+                const formatMessage = selectedFormat ? 
+                    `لم يتم العثور على ملف ${selectedFormat} تلقائياً.<br>Template file ${selectedFormat} not found automatically.<br>` :
+                    'يرجى اختيار ملف القالب.<br>Please select template file.<br>';
+                
                 modal.innerHTML = `
                     <div class="modal-content" style="max-width: 500px;">
                         <h2>اختيار ملف القالب / Select Template File</h2>
                         <p style="margin: 20px 0;">
-                            لم يتم العثور على ملف format.docx تلقائياً.<br>
-                            يرجى اختيار ملف format.docx يدوياً.<br><br>
-                            Template file not found automatically.<br>
-                            Please select format.docx file manually.
+                            ${formatMessage}
+                            يرجى اختيار ملف القالب يدوياً (عرض سعر.docx أو format.docx أو template.docx).<br><br>
+                            Please select template file manually (عرض سعر.docx, format.docx, or template.docx).
                         </p>
                         <div class="modal-actions">
                             <button id="selectTemplateBtn" class="btn btn-primary">اختيار الملف / Select File</button>
@@ -536,17 +545,71 @@ class PriceListManager {
             // Get table rows
             const rows = productTable.getElementsByTagName('w:tr');
             
+            if (rows.length === 0) {
+                throw new Error('الجدول فارغ في القالب.\n\nTable is empty in template.');
+            }
+
+            // Read header row to detect format
+            const headerRow = rows[0];
+            const headerCells = headerRow.getElementsByTagName('w:tc');
+            const headerTexts = [];
+            
+            for (let i = 0; i < headerCells.length; i++) {
+                const cellText = headerCells[i].textContent.trim();
+                headerTexts.push(cellText);
+            }
+            
+            console.log('Detected header columns:', headerTexts);
+            
+            // Detect column order by matching Arabic headers
+            // Common formats:
+            // Format 1: الإجمالي, عدد, الإفرادي, النوع (Total, Quantity, Unit Price, Name)
+            // Format 2: النوع, الإفرادي, عدد, الإجمالي (Name, Unit Price, Quantity, Total)
+            // Format 3: عدد, الإفرادي, النوع, الإجمالي (Quantity, Unit Price, Name, Total)
+            
+            const normalizeHeader = (text) => (text || '').replace(/\s+/g, '').toLowerCase();
+            const findColumnIndex = (searchTerms) => {
+                for (let i = 0; i < headerTexts.length; i++) {
+                    const header = normalizeHeader(headerTexts[i]);
+                    for (const term of searchTerms) {
+                        if (header.includes(normalizeHeader(term))) {
+                            return i;
+                        }
+                    }
+                }
+                return -1;
+            };
+            
+            const totalColIndex = findColumnIndex(['الإجمالي', 'اجمالي', 'total']);
+            const qtyColIndex = findColumnIndex(['عدد', 'quantity', 'كمية']);
+            const priceColIndex = findColumnIndex(['السعرالإفرادي', 'السعرالإفرادى', 'الإفرادي', 'افرادي', 'unitprice']);
+            const nameColIndex = findColumnIndex(['الطراز', 'النوع', 'name', 'نوع', 'type', 'الاسم']);
+            
+            console.log('Column indices - Total:', totalColIndex, 'Qty:', qtyColIndex, 'Price:', priceColIndex, 'Name:', nameColIndex);
+            
+            // If we couldn't detect columns, use default order (assume Format 1)
+            const columnOrder = {
+                total: totalColIndex >= 0 ? totalColIndex : null,
+                quantity: qtyColIndex >= 0 ? qtyColIndex : null,
+                price: priceColIndex >= 0 ? priceColIndex : null,
+                name: nameColIndex >= 0 ? nameColIndex : null
+            };
+            
+            // Use header length to preserve all columns (including airflow/pressure)
+            const numColumns = headerCells.length;
+            
             // Keep header row (first row), remove data rows
             while (rows.length > 1) {
                 productTable.removeChild(rows[rows.length - 1]);
             }
 
-            // Add product rows (matching desktop format: الإجمالي, عدد, الإفرادي, النوع)
+            // Calculate grand total
             const grandTotal = this.selectedFans.reduce((sum, item) => {
                 const price = item.priceType === 'wholesale' ? item.fan.price_wholesale : item.fan.price_retail;
                 return sum + (price * item.quantity);
             }, 0);
 
+            // Add product rows
             this.selectedFans.forEach((item) => {
                 const price = item.priceType === 'wholesale' ? item.fan.price_wholesale : item.fan.price_retail;
                 const total = price * item.quantity;
@@ -554,15 +617,30 @@ class PriceListManager {
                 // Create new row
                 const newRow = xmlDoc.createElement('w:tr');
                 
-                // Create 4 cells: الإجمالي (Total), عدد (Quantity), الإفرادي (Unit Price), النوع (Name)
-                const cells = [
-                    { value: `$ ${total.toFixed(0)}`, align: 'center' },  // Total
-                    { value: String(item.quantity), align: 'center' },      // Quantity
-                    { value: price.toFixed(0), align: 'center' },          // Unit Price
-                    { value: item.fan.name || '', align: 'right' }          // Name
-                ];
-
-                cells.forEach((cellData) => {
+                // Create array for all columns, initialized with empty strings
+                const cellValues = new Array(numColumns).fill('');
+                
+                // Fill in the values at correct positions
+                if (columnOrder.total !== null) {
+                    cellValues[columnOrder.total] = { value: `$ ${total.toFixed(0)}`, align: 'center' };
+                }
+                if (columnOrder.quantity !== null) {
+                    cellValues[columnOrder.quantity] = { value: String(item.quantity), align: 'center' };
+                }
+                if (columnOrder.price !== null) {
+                    cellValues[columnOrder.price] = { value: price.toFixed(0), align: 'center' };
+                }
+                if (columnOrder.name !== null) {
+                    const desc = (item.fan.description || '').trim();
+                    const name = (item.fan.name || '').trim();
+                    const combined = desc && name ? `${desc} - ${name}` : (desc || name);
+                    cellValues[columnOrder.name] = { value: combined, align: 'right' };
+                }
+                
+                // Create cells for all columns
+                for (let i = 0; i < numColumns; i++) {
+                    const cellData = cellValues[i] || { value: '', align: 'center' };
+                    
                     const cell = xmlDoc.createElement('w:tc');
                     const para = xmlDoc.createElement('w:p');
                     const pPr = xmlDoc.createElement('w:pPr');
@@ -579,16 +657,68 @@ class PriceListManager {
                     para.appendChild(run);
                     cell.appendChild(para);
                     newRow.appendChild(cell);
-                });
+                }
 
                 productTable.appendChild(newRow);
             });
+            
+            // Add total row at the end
+            const totalRow = xmlDoc.createElement('w:tr');
+            const totalCellValues = new Array(numColumns).fill('');
+            
+            // Set total value in the total column, and "الإجمالي الكلي" or "Total" in name column
+            if (columnOrder.total !== null) {
+                totalCellValues[columnOrder.total] = { value: `$ ${grandTotal.toFixed(0)}`, align: 'center' };
+            } else if (columnOrder.price !== null) {
+                totalCellValues[columnOrder.price] = { value: `$ ${grandTotal.toFixed(0)}`, align: 'center' };
+            }
+            if (columnOrder.name !== null) {
+                totalCellValues[columnOrder.name] = { value: 'الإجمالي الكلي', align: 'right' };
+            }
+            // Leave other columns empty or fill with appropriate text
+            
+            // Create cells for total row
+            for (let i = 0; i < numColumns; i++) {
+                const cellData = totalCellValues[i] || { value: '', align: 'center' };
+                
+                const cell = xmlDoc.createElement('w:tc');
+                const para = xmlDoc.createElement('w:p');
+                const pPr = xmlDoc.createElement('w:pPr');
+                const jc = xmlDoc.createElement('w:jc');
+                jc.setAttribute('w:val', cellData.align);
+                pPr.appendChild(jc);
+                
+                // Make total row bold
+                const pStyle = xmlDoc.createElement('w:pStyle');
+                pStyle.setAttribute('w:val', 'Normal');
+                pPr.appendChild(pStyle);
+                para.appendChild(pPr);
+                
+                const run = xmlDoc.createElement('w:r');
+                const runPr = xmlDoc.createElement('w:rPr');
+                const bold = xmlDoc.createElement('w:b');
+                runPr.appendChild(bold);
+                run.appendChild(runPr);
+                
+                const text = xmlDoc.createElement('w:t');
+                text.setAttribute('xml:space', 'preserve');
+                text.textContent = cellData.value;
+                run.appendChild(text);
+                para.appendChild(run);
+                cell.appendChild(para);
+                totalRow.appendChild(cell);
+            }
+            
+            productTable.appendChild(totalRow);
+
+            // Add customer name after "السيد المحترم:" on the same line
+            this.addCustomerNameAfterLabel(xmlDoc, customerName);
 
             // Replace placeholders in document
             const serializer = new XMLSerializer();
             let updatedXml = serializer.serializeToString(xmlDoc);
             
-            // Replace placeholders
+            // Replace placeholders (for backward compatibility)
             updatedXml = updatedXml.replace(/{{\{?CUSTOMER_NAME\}\}?/g, customerName);
             updatedXml = updatedXml.replace(/{{\{?DATE\}\}?/g, date);
 
@@ -616,6 +746,57 @@ class PriceListManager {
             console.error('Export error:', error);
             alert('خطأ في التصدير: ' + error.message + '\n\nExport error: ' + error.message);
         }
+    }
+
+    addCustomerNameAfterLabel(xmlDoc, customerName) {
+        const paragraphs = xmlDoc.getElementsByTagName('w:p');
+        const labelPatterns = [
+            'السيد المحترم:',
+            'السيد  المحترم:',
+            'السيد المحترم :',
+            'السيد  المحترم :'
+        ];
+
+        for (let i = 0; i < paragraphs.length; i++) {
+            const para = paragraphs[i];
+            const paraText = para.textContent || '';
+            for (const pattern of labelPatterns) {
+                if (paraText.includes(pattern)) {
+                    const updatedText = paraText.replace(pattern, `${pattern} ${customerName}`);
+                    this.updateParagraphText(para, updatedText);
+                    return;
+                }
+            }
+        }
+
+        console.warn('Customer label "السيد المحترم:" not found, customer name will only be added via placeholders');
+    }
+
+    updateParagraphText(paragraph, newText) {
+        // Clear existing runs
+        const runs = paragraph.getElementsByTagName('w:r');
+        while (runs.length > 0) {
+            paragraph.removeChild(runs[0]);
+        }
+        
+        // Create new run with text
+        const run = paragraph.ownerDocument.createElement('w:r');
+        const text = paragraph.ownerDocument.createElement('w:t');
+        text.setAttribute('xml:space', 'preserve');
+        text.textContent = newText;
+        run.appendChild(text);
+        
+        // Add paragraph properties if they don't exist
+        let pPr = paragraph.getElementsByTagName('w:pPr')[0];
+        if (!pPr) {
+            pPr = paragraph.ownerDocument.createElement('w:pPr');
+            const jc = paragraph.ownerDocument.createElement('w:jc');
+            jc.setAttribute('w:val', 'right');
+            pPr.appendChild(jc);
+            paragraph.insertBefore(pPr, paragraph.firstChild);
+        }
+        
+        paragraph.appendChild(run);
     }
 }
 
@@ -678,4 +859,6 @@ function exportToWord() {
 document.addEventListener('DOMContentLoaded', () => {
     priceListManager = new PriceListManager();
 });
+
+
 

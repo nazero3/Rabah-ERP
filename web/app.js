@@ -18,7 +18,6 @@ class App {
                 this.currentProductType = e.target.value;
                 this.selectedItemId = null;
                 this.updateSortButtons();
-                this.updateViewDatasheetButton();
                 this.refreshTable();
             });
         });
@@ -27,7 +26,6 @@ class App {
         document.getElementById('addBtn').addEventListener('click', () => this.showAddDialog());
         document.getElementById('editBtn').addEventListener('click', () => this.showEditDialog());
         document.getElementById('deleteBtn').addEventListener('click', () => this.deleteItem());
-        document.getElementById('refreshBtn').addEventListener('click', () => this.refreshTable());
         document.getElementById('priceListBtn').addEventListener('click', () => {
             if (this.currentProductType === 'fans') {
                 this.showPriceListWindow();
@@ -35,7 +33,6 @@ class App {
                 alert('Price list is currently available only for Fans.');
             }
         });
-        document.getElementById('viewDatasheetBtn').addEventListener('click', () => this.viewDatasheet());
         document.getElementById('importBtn').addEventListener('click', () => {
             window.location.href = 'import.html';
         });
@@ -48,7 +45,12 @@ class App {
         });
 
         // Table row click (single click for selection)
+        // But ignore clicks on buttons
         document.getElementById('tableBody').addEventListener('click', (e) => {
+            // Don't select row if clicking on a button
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                return;
+            }
             const row = e.target.closest('tr');
             if (row) {
                 document.querySelectorAll('#tableBody tr').forEach(r => r.classList.remove('selected'));
@@ -71,18 +73,9 @@ class App {
 
         // Initial setup
         this.updateSortButtons();
-        this.updateViewDatasheetButton();
         this.refreshTable();
     }
 
-    updateViewDatasheetButton() {
-        const btn = document.getElementById('viewDatasheetBtn');
-        if (this.currentProductType === 'fans') {
-            btn.classList.remove('hidden');
-        } else {
-            btn.classList.add('hidden');
-        }
-    }
 
     updateSortButtons() {
         const container = document.getElementById('sortButtons');
@@ -101,7 +94,6 @@ class App {
     getColumnsForProductType() {
         if (this.currentProductType === 'fans') {
             return [
-                { key: 'id', label: 'ID' },
                 { key: 'name', label: 'نوع / Name' },
                 { key: 'airflow', label: 'غزارة / Airflow' },
                 { key: 'price_wholesale', label: 'جملة / Wholesale' },
@@ -110,7 +102,6 @@ class App {
             ];
         } else if (this.currentProductType === 'sheet_metal') {
             return [
-                { key: 'id', label: 'ID' },
                 { key: 'thickness', label: 'سماكة الصاج' },
                 { key: 'dimensions', label: 'ابعاد الصندوق' },
                 { key: 'measurement', label: 'القياس' },
@@ -119,7 +110,6 @@ class App {
             ];
         } else { // flexible
             return [
-                { key: 'id', label: 'ID' },
                 { key: 'diameter', label: 'قطر' },
                 { key: 'collection', label: 'ربطة' },
                 { key: 'meter', label: 'متر' }
@@ -197,6 +187,16 @@ class App {
         
         // Create header
         const headerRow = document.createElement('tr');
+        
+        // Add action column header for fans
+        if (this.currentProductType === 'fans') {
+            const actionHeader = document.createElement('th');
+            actionHeader.textContent = 'إجراءات / Actions';
+            actionHeader.style.width = '100px';
+            actionHeader.style.textAlign = 'center';
+            headerRow.appendChild(actionHeader);
+        }
+        
         columns.forEach(col => {
             const th = document.createElement('th');
             th.textContent = col.label;
@@ -204,26 +204,41 @@ class App {
         });
         thead.appendChild(headerRow);
 
-            // Create rows
-            items.forEach(item => {
-                const row = document.createElement('tr');
-                row.dataset.id = item.id;
+        // Create rows
+        items.forEach(item => {
+            const row = document.createElement('tr');
+            row.dataset.id = item.id;
+            
+            // Add action button column for fans
+            if (this.currentProductType === 'fans') {
+                const actionCell = document.createElement('td');
+                actionCell.style.textAlign = 'center';
+                actionCell.style.padding = '5px';
                 
-                // Add cursor style for fans (to indicate double-click functionality)
-                if (this.currentProductType === 'fans') {
-                    row.style.cursor = 'pointer';
-                    row.title = 'انقر نقراً مزدوجاً لعرض الكتالوج / Double-click to view catalog';
-                }
+                const viewBtn = document.createElement('button');
+                viewBtn.className = 'btn btn-info btn-sm';
+                viewBtn.style.padding = '5px 10px';
+                viewBtn.style.fontSize = '12px';
+                viewBtn.innerHTML = '📄 عرض / View';
+                viewBtn.title = 'عرض الكتالوج / View Catalog';
+                viewBtn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent row selection
+                    this.viewDatasheetForItem(item.id);
+                };
                 
-                columns.forEach(col => {
-                    const td = document.createElement('td');
-                    const value = item[col.key];
-                    td.textContent = value !== null && value !== undefined ? value : '';
-                    row.appendChild(td);
-                });
-                
-                tbody.appendChild(row);
+                actionCell.appendChild(viewBtn);
+                row.appendChild(actionCell);
+            }
+            
+            columns.forEach(col => {
+                const td = document.createElement('td');
+                const value = item[col.key];
+                td.textContent = value !== null && value !== undefined ? value : '';
+                row.appendChild(td);
             });
+            
+            tbody.appendChild(row);
+        });
     }
 
     showAddDialog() {
@@ -403,13 +418,6 @@ class App {
         this.selectedItemId = null;
     }
 
-    viewDatasheet() {
-        if (this.currentProductType !== 'fans' || !this.selectedItemId) {
-            alert('يرجى تحديد مروحة لعرض الكتالوج / Please select a fan to view catalog');
-            return;
-        }
-        this.viewDatasheetForItem(this.selectedItemId);
-    }
 
     viewDatasheetForItem(itemId) {
         if (this.currentProductType !== 'fans') {
@@ -496,5 +504,7 @@ authManager.showMainPage = function() {
         }
     }, 100);
 };
+
+
 
 
